@@ -71,7 +71,7 @@ class _AttendanceViewState extends State<AttendanceListView> {
             .headlineSmall,
           ),
           Container(
-            margin: const EdgeInsets.all(10),
+            margin: const EdgeInsets.only(top: 10, bottom: 10),
             child: TextField(
               onChanged: onQueryChanged,
               decoration: const InputDecoration(
@@ -87,6 +87,7 @@ class _AttendanceViewState extends State<AttendanceListView> {
                 return Container(
                   margin: const EdgeInsets.only(top: 5, bottom: 5),
                   child: ListTile(
+                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
                     tileColor: Theme.of(context).colorScheme.primaryContainer,
                     leading: Checkbox(
                       onChanged: (bool? value) {

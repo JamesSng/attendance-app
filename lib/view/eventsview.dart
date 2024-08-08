@@ -43,6 +43,7 @@ class _EventsViewState extends State<EventsView> {
                     },
                     style: const ButtonStyle(
                       padding: WidgetStatePropertyAll(EdgeInsets.all(15)),
+                      shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)))),
                     ),
                     child: Row(
                       children: [
