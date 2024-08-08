@@ -86,7 +86,7 @@ class _HomePageViewState extends State<HomePageView> {
         // the App.build method, and use it to set our appbar title.
         title: Text(
           'CBC Attendance App',
-          style: Theme.of(context).textTheme.headlineLarge,
+          style: Theme.of(context).textTheme.headlineMedium,
         ),
       ),
       body: Container(
