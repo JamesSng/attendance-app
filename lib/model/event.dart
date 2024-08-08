@@ -2,10 +2,10 @@ import 'package:intl/intl.dart';
 
 class Event {
   Event({
-    required this.name, required this.date,
+    required this.id, required this.name, required this.date,
   });
 
-  String name;
+  String id, name;
   DateTime date;
   DateFormat dateFormat = DateFormat("dd/MM/yyyy");
 

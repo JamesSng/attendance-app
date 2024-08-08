@@ -4,9 +4,9 @@ import '../model/event.dart';
 import '../model/ticket.dart';
 
 class AttendanceView extends StatelessWidget {
-  const AttendanceView({super.key, required this.event});
+  const AttendanceView({super.key, required this.eventId});
 
-  final Event event;
+  final String eventId;
 
   @override
   Widget build(BuildContext context) {
@@ -20,19 +20,19 @@ class AttendanceView extends StatelessWidget {
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(
-          event.name,
+          eventId,
           style: Theme.of(context).textTheme.headlineMedium,
         ),
       ),
-      body: AttendanceListView(event: event),
+      body: AttendanceListView(eventId: eventId),
     );
   }
 }
 
 class AttendanceListView extends StatefulWidget {
-  const AttendanceListView({super.key, required this.event});
+  const AttendanceListView({super.key, required this.eventId});
 
-  final Event event;
+  final String eventId;
 
   @override
   State<AttendanceListView> createState() => _AttendanceViewState();

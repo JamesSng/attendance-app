@@ -1,22 +1,56 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../model/event.dart';
 import 'attendanceview.dart';
 
 class EventsView extends StatefulWidget {
-  const EventsView({super.key});
+  EventsView({super.key});
+  final db = FirebaseFirestore.instance;
 
   @override
   State<EventsView> createState() => _EventsViewState();
 }
 
 class _EventsViewState extends State<EventsView> {
+  bool loading = true;
+  List<Event> events = [];
+
+  loadData() async {
+    final today = DateTime(
+        DateTime.now().year,
+        DateTime.now().month,
+        DateTime.now().day
+    );
+    await widget.db.collection("events")
+    .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(today))
+    .orderBy('date', descending: true).snapshots().listen((res) {
+      List<Event> newEvents = [];
+      for (var event in res.docs) {
+        newEvents.add(Event(
+            id: event.id,
+            name: event.get('name'),
+            date: event.get('date').toDate()));
+      }
+      setState(() {
+        events = newEvents;
+        loading = false;
+      });
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    //TODO: get events from database
-    List<Event> events = [
-      Event(name: 'Sunday Service', date: DateTime(2024, 8, 17)),
-      Event(name: 'Sunday Service', date: DateTime(2024, 8, 10)),
-    ];
+    return loading ? renderLoad() : renderData();
+  }
+
+  Widget renderLoad() {
+    loadData();
+    return const Center(
+      child: CircularProgressIndicator(),
+    );
+  }
+
+  Widget renderData() {
     return Container(
       margin: const EdgeInsets.fromLTRB(10, 10, 10, 10),
       child: Column(
@@ -38,7 +72,7 @@ class _EventsViewState extends State<EventsView> {
                     onPressed: (){
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => AttendanceView(event: events[index])),
+                        MaterialPageRoute(builder: (context) => AttendanceView(eventId: events[index].id)),
                       );
                     },
                     style: const ButtonStyle(
