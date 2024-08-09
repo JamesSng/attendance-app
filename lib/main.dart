@@ -76,7 +76,7 @@ class _HomePageViewState extends State<HomePageView> {
         page = EventsView();
         break;
       case 1:
-        page = SettingsView();
+        page = const SettingsView();
         break;
       default:
         throw UnimplementedError('no widget for $selectedIndex');

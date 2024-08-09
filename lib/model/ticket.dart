@@ -1,8 +1,8 @@
 class Ticket {
   Ticket({
-    required this.name, this.checked = false,
+    required this.id, required this.name, this.checked = false,
   });
 
-  String name;
+  String id, name;
   bool checked;
 }

@@ -1,12 +1,13 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../model/event.dart';
 import '../model/ticket.dart';
 
 class AttendanceView extends StatelessWidget {
-  const AttendanceView({super.key, required this.eventId});
+  const AttendanceView({super.key, required this.event});
 
-  final String eventId;
+  final Event event;
 
   @override
   Widget build(BuildContext context) {
@@ -20,45 +21,118 @@ class AttendanceView extends StatelessWidget {
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(
-          eventId,
-          style: Theme.of(context).textTheme.headlineMedium,
+          "${event.name} (${event.getDateString()})",
+          style: Theme.of(context).textTheme.headlineSmall,
         ),
       ),
-      body: AttendanceListView(eventId: eventId),
+      body: AttendanceListView(eventId: event.id),
     );
   }
 }
 
 class AttendanceListView extends StatefulWidget {
-  const AttendanceListView({super.key, required this.eventId});
-
+  AttendanceListView({super.key, required this.eventId});
   final String eventId;
+  final db = FirebaseFirestore.instance;
 
   @override
   State<AttendanceListView> createState() => _AttendanceViewState();
 }
 
-// TODO: get tickets from widget.event;
-List<Ticket> tickets = [
-  Ticket(name: 'James', checked: true),
-  Ticket(name: 'Josh', checked: false),
-  Ticket(name: 'Jean', checked: false),
-  Ticket(name: 'Mandy', checked: true),
-];
-
 class _AttendanceViewState extends State<AttendanceListView> {
-  List<Ticket> showTickets = tickets;
+  @override
+  void setState(fn) {
+    if(mounted) {
+      super.setState(fn);
+    }
+  }
+
+  bool loadingChecked = true, loadingMap = true;
+  Map<String, String> idToName = {};
+  List<Ticket> tickets = [], showTickets = [];
+  String prevQuery = '';
 
   void onQueryChanged(String query) {
+    prevQuery = query;
     setState(() {
       showTickets = tickets
         .where((t) => t.name.toLowerCase().contains(query.toLowerCase()))
         .toList();
+      showTickets.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     });
   }
 
+  loadData() {
+    // query for the list of checked
+    widget.db.collection("events").doc(widget.eventId).collection("attendees").snapshots().listen((res) {
+      List<Ticket> newTickets = [];
+      for (var ticket in res.docs) {
+        newTickets.add(Ticket(
+            id: ticket.get('ticket'),
+            name: '',
+            checked: ticket.get('checked'))
+        );
+      }
+
+      if (!loadingMap) {
+        for (var ticket in newTickets) {
+          ticket.name = idToName[ticket.id]!;
+        }
+      }
+
+      setState(() {
+        tickets = newTickets;
+        loadingChecked = false;
+        onQueryChanged(prevQuery);
+      });
+    });
+
+    // query for id to name
+    widget.db.collection("tickets").snapshots().listen((res) {
+      Map<String, String> newMap = {};
+      for (var ticket in res.docs) {
+        newMap[ticket.id] = ticket.get('name');
+      }
+
+      List<Ticket> newTickets = tickets;
+
+      if (!loadingChecked) {
+        for (var ticket in newTickets) {
+          ticket.name = newMap[ticket.id]!;
+        }
+      }
+
+      setState(() {
+        tickets = newTickets;
+        idToName = newMap;
+        loadingMap = false;
+        onQueryChanged(prevQuery);
+      });
+    });
+  }
+
+  updateChecked(index, value) {
+    widget.db.collection("events")
+      .doc(widget.eventId)
+      .collection("attendees")
+      .doc(showTickets[index].id)
+      .update({'checked': value});
+  }
+
+  // TODO: reformat UI
   @override
   Widget build(BuildContext context) {
+    return (loadingChecked || loadingMap) ? renderLoad() : renderData();
+  }
+
+  Widget renderLoad() {
+    loadData();
+    return const Center(
+      child: CircularProgressIndicator(),
+    );
+  }
+
+  Widget renderData() {
     return Container(
       margin: const EdgeInsets.fromLTRB(10, 10, 10, 10),
       child: Column(
@@ -91,9 +165,7 @@ class _AttendanceViewState extends State<AttendanceListView> {
                     tileColor: Theme.of(context).colorScheme.primaryContainer,
                     leading: Checkbox(
                       onChanged: (bool? value) {
-                        setState(() {
-                          showTickets[index].checked = value!;
-                        });
+                        updateChecked(index, value!);
                       },
                       value: showTickets[index].checked,
                     ),

@@ -15,13 +15,13 @@ class _EventsViewState extends State<EventsView> {
   bool loading = true;
   List<Event> events = [];
 
-  loadData() async {
+  loadData() {
     final today = DateTime(
         DateTime.now().year,
         DateTime.now().month,
         DateTime.now().day
     );
-    await widget.db.collection("events")
+    widget.db.collection("events")
     .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(today))
     .orderBy('date', descending: true).snapshots().listen((res) {
       List<Event> newEvents = [];
@@ -72,7 +72,7 @@ class _EventsViewState extends State<EventsView> {
                     onPressed: (){
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => AttendanceView(eventId: events[index].id)),
+                        MaterialPageRoute(builder: (context) => AttendanceView(event: events[index])),
                       );
                     },
                     style: const ButtonStyle(
