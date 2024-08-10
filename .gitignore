@@ -9,6 +9,7 @@
 .history
 .svn/
 migrate_working_dir/
+cbc-attendance-2a7d9-5be9fa91c606.json
 
 # IntelliJ related
 *.iml

@@ -68,7 +68,7 @@ class _AttendanceViewState extends State<AttendanceListView> {
       List<Ticket> newTickets = [];
       for (var ticket in res.docs) {
         newTickets.add(Ticket(
-            id: ticket.get('ticket'),
+            id: ticket.id,
             name: '',
             checked: ticket.get('checked'))
         );
@@ -119,7 +119,6 @@ class _AttendanceViewState extends State<AttendanceListView> {
       .update({'checked': value});
   }
 
-  // TODO: reformat UI
   @override
   Widget build(BuildContext context) {
     return (loadingChecked || loadingMap) ? renderLoad() : renderData();
@@ -160,17 +159,19 @@ class _AttendanceViewState extends State<AttendanceListView> {
               itemBuilder: (BuildContext context, int index) {
                 return Container(
                   margin: const EdgeInsets.only(top: 5, bottom: 5),
-                  child: ListTile(
-                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
-                    tileColor: Theme.of(context).colorScheme.primaryContainer,
-                    leading: Checkbox(
-                      onChanged: (bool? value) {
-                        updateChecked(index, value!);
-                      },
-                      value: showTickets[index].checked,
-                    ),
-                    title: Text(
-                      showTickets[index].name,
+                  child: Material(
+                    child: ListTile(
+                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
+                      tileColor: Theme.of(context).colorScheme.primaryContainer,
+                      leading: Checkbox(
+                        onChanged: (bool? value) {
+                          updateChecked(index, value!);
+                        },
+                        value: showTickets[index].checked,
+                      ),
+                      title: Text(
+                        showTickets[index].name,
+                      ),
                     ),
                   ),
                 );
