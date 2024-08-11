@@ -1,1 +1,36 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"cbc-attendance-2a7d9","appId":"1:1017067702131:android:d5c4602674d0f0dab8a706","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"cbc-attendance-2a7d9","configurations":{"android":"1:1017067702131:android:d5c4602674d0f0dab8a706","web":"1:1017067702131:web:17eb759ebb7457d7b8a706"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "cbc-attendance-2a7d9",
+          "appId": "1:1017067702131:android:d5c4602674d0f0dab8a706",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "cbc-attendance-2a7d9",
+          "configurations": {
+            "android": "1:1017067702131:android:d5c4602674d0f0dab8a706",
+            "web": "1:1017067702131:web:17eb759ebb7457d7b8a706"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
