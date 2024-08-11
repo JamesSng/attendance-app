@@ -10,6 +10,7 @@
 .svn/
 migrate_working_dir/
 cbc-attendance-2a7d9-5be9fa91c606.json
+lib/firebase_options.dart
 
 # IntelliJ related
 *.iml
