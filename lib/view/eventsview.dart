@@ -15,6 +15,13 @@ class _EventsViewState extends State<EventsView> {
   bool loading = true;
   List<Event> events = [];
 
+  @override
+  void setState(fn) {
+    if(mounted) {
+      super.setState(fn);
+    }
+  }
+
   loadData() {
     final today = DateTime(
         DateTime.now().year,
@@ -23,7 +30,7 @@ class _EventsViewState extends State<EventsView> {
     );
     widget.db.collection("events")
     .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(today))
-    .orderBy('date', descending: true).snapshots().listen((res) {
+    .orderBy('date').snapshots().listen((res) {
       List<Event> newEvents = [];
       for (var event in res.docs) {
         newEvents.add(Event(
