@@ -1,8 +1,12 @@
 import 'package:attendance_app/view/eventsview.dart';
 import 'package:attendance_app/view/settings.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,13 +43,16 @@ class AttendanceApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurpleAccent),
         useMaterial3: true,
       ),
-      home: const HomePageView(),
+      home: HomePageView(),
     );
   }
 }
 
 class HomePageView extends StatefulWidget {
-  const HomePageView({super.key});
+  HomePageView({super.key});
+
+  final auth = FirebaseAuth.instance;
+  final db = FirebaseFirestore.instance;
 
   // This widget is the home page of your application. It is stateful, meaning
   // that it has a State object (defined below) that contains fields that affect
@@ -62,9 +69,117 @@ class HomePageView extends StatefulWidget {
 
 class _HomePageViewState extends State<HomePageView> {
   var selectedIndex = 0;
+  var loggedin = false;
+  var initialized = false;
+  var admin = false;
 
   @override
   Widget build(BuildContext context) {
+    if (!initialized) {
+      initialized = true;
+      widget.auth.authStateChanges().listen(
+        (User? user) {
+          if (user == null) {
+            setState(() {
+              loggedin = false;
+            });
+          } else {
+            String? uid = widget.auth.currentUser?.uid;
+            if (uid != null) {
+              widget.db.collection("users").doc(uid).get().then((res) {
+                if (!res.exists) {
+                  res.reference.set({"admin": false});
+                } else if (res.get('admin') == true) {
+                  admin = true;
+                }
+                setState(() {
+                  loggedin = true;
+                });
+              });
+            }
+          }
+        }
+      );
+    }
+
+    if (!loggedin) {
+      return showLogin(context);
+    }
+    return showHomePage(context);
+  }
+
+  Widget showLogin(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text(
+          'CBC Attendance App',
+          style: Theme.of(context).textTheme.headlineMedium,
+        ),
+      ),
+      body: SizedBox.expand(
+        child: Container(
+          color: Theme.of(context).colorScheme.surface,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 300,
+                ),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  padding: const EdgeInsets.all(30),
+                  child: Image.asset("assets/icon.png"),
+                ),
+              ),
+              Text(
+                "Welcome!",
+                style: TextStyle(
+                  fontSize: Theme.of(context).textTheme.headlineLarge?.fontSize,
+                )
+              ),
+              FilledButton(
+                onPressed: () { signInWithGoogle(context); },
+                child: const Text("Sign In"),
+              ),
+            ]
+          ),
+        ),
+      ),
+    );
+  }
+
+  void signInWithGoogle(BuildContext context) async{
+    // Trigger the authentication flow
+    final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+    // Obtain the auth details from the request
+    final GoogleSignInAuthentication? googleAuth = await googleUser
+        ?.authentication;
+
+    // Create a new credential
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth?.accessToken,
+      idToken: googleAuth?.idToken,
+    );
+
+    // Once signed in, return the UserCredential
+    await widget.auth.signInWithCredential(credential);
+
+    if (widget.auth.currentUser != null) {
+      String? name = widget.auth.currentUser?.displayName;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: (name != null) ? Text('Welcome $name!') : const Text('Welcome!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Widget showHomePage(BuildContext context) {
     // This method is rerun every time setState is called
     //
     // The Flutter framework has been optimized to make rerunning build methods
@@ -76,7 +191,7 @@ class _HomePageViewState extends State<HomePageView> {
         page = EventsView();
         break;
       case 1:
-        page = const SettingsView();
+        page = SettingsView(admin: admin);
         break;
       default:
         throw UnimplementedError('no widget for $selectedIndex');

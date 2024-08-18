@@ -124,7 +124,7 @@ class _EditEventViewState extends State<EditEventView> {
               color: Colors.black,
             ),
             Expanded(
-              child: AttendanceListView(eventId: widget.event.id),
+              child: AttendanceListView(eventId: widget.event.id, reviewMode: true),
             ),
           ]
         ),

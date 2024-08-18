@@ -13,7 +13,7 @@ db = firestore.client()
 
 def addTicket(name):
 	ticket = db.collection("tickets").document()
-	ticket.set({"name": name})
+	ticket.set({"name": name, "regular": name in regular, "hidden": False})
 	ticketId = ticket.id
 	
 	for event in db.collection("events").stream():
@@ -24,5 +24,11 @@ def loadCSV(filename):
 	with open(filename) as f:
 		for line in f:
 			addTicket(line.strip())
+
+regular = []
+
+with open("worshippers_regular.csv") as f:
+	for line in f:
+		regular.append(line.strip())
 
 loadCSV("worshippers.csv")

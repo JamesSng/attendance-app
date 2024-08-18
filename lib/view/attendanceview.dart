@@ -31,8 +31,9 @@ class AttendanceView extends StatelessWidget {
 }
 
 class AttendanceListView extends StatefulWidget {
-  AttendanceListView({super.key, required this.eventId});
+  AttendanceListView({super.key, required this.eventId, this.reviewMode = false});
   final String eventId;
+  final bool reviewMode;
   final db = FirebaseFirestore.instance;
 
   @override
@@ -48,17 +49,28 @@ class _AttendanceViewState extends State<AttendanceListView> {
   }
 
   bool loadingChecked = true, loadingMap = true;
-  Map<String, String> idToName = {};
+  int checkedNo = 0;
+  Map<String, Ticket> idToTicket = {};
   List<Ticket> tickets = [], showTickets = [];
-  String prevQuery = '';
 
-  void onQueryChanged(String query) {
-    prevQuery = query;
-    setState(() {
-      showTickets = tickets
-        .where((t) => t.name.toLowerCase().contains(query.toLowerCase()))
-        .toList();
-      showTickets.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+  String query = '';
+  bool showRegular = true, showNonRegular = false;
+
+  void onQueryChanged({String? newQuery, bool? newShowRegular, bool? newShowNonRegular}) {
+    if (newQuery != null) query = newQuery;
+    if (newShowRegular != null) showRegular = newShowRegular;
+    if (newShowNonRegular != null) showNonRegular = newShowNonRegular;
+
+    showTickets = tickets
+      .where((t) => t.name.toLowerCase().contains(query.toLowerCase()))
+      .where((t) => (showRegular && t.regular) || (showNonRegular && !t.regular))
+      .toList();
+    showTickets.sort((a, b) {
+      if (a.hidden == b.hidden) {
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      } else {
+        return a.hidden ? 1 : -1;
+      }
     });
   }
 
@@ -70,45 +82,63 @@ class _AttendanceViewState extends State<AttendanceListView> {
         newTickets.add(Ticket(
             id: ticket.id,
             name: '',
+            regular: false,
             checked: ticket.get('checked'))
         );
       }
 
-      if (!loadingMap) {
-        for (var ticket in newTickets) {
-          ticket.name = idToName[ticket.id]!;
-        }
-      }
-
-      setState(() {
-        tickets = newTickets;
-        loadingChecked = false;
-        onQueryChanged(prevQuery);
-      });
+      processData(newTickets, false, idToTicket, loadingMap);
     });
 
     // query for id to name
     widget.db.collection("tickets").snapshots().listen((res) {
-      Map<String, String> newMap = {};
+      Map<String, Ticket> newMap = {};
       for (var ticket in res.docs) {
-        newMap[ticket.id] = ticket.get('name');
+        newMap[ticket.id] = Ticket(
+          id: ticket.id,
+          name: ticket.get('name'),
+          regular: ticket.get('regular'),
+          hidden: ticket.get('hidden'),
+        );
       }
 
-      List<Ticket> newTickets = tickets;
+      processData(tickets, loadingChecked, newMap, false);
+    });
+  }
 
-      if (!loadingChecked) {
-        for (var ticket in newTickets) {
-          ticket.name = newMap[ticket.id]!;
+  processData(List<Ticket> newTickets, bool newLoadingChecked, Map<String, Ticket> newIdToTicket, bool newLoadingMap) {
+    int newChecked = 0;
+    List<Ticket> filteredTickets = [];
+
+    if (!newLoadingMap && !newLoadingChecked) {
+      for (Ticket ticket in newTickets) {
+        Ticket? newTicket = newIdToTicket[ticket.id];
+        newTicket?.checked = ticket.checked;
+
+        if (newTicket != null && (!newTicket.hidden || widget.reviewMode)) {
+          filteredTickets.add(newTicket);
+          if (newTicket.checked) {
+            ++newChecked;
+          }
         }
       }
 
       setState(() {
-        tickets = newTickets;
-        idToName = newMap;
-        loadingMap = false;
-        onQueryChanged(prevQuery);
+        tickets = filteredTickets;
+        idToTicket = newIdToTicket;
+        checkedNo = newChecked;
+        loadingChecked = newLoadingChecked;
+        loadingMap = newLoadingMap;
+        onQueryChanged();
       });
-    });
+    } else {
+      setState(() {
+        tickets = newTickets;
+        idToTicket = newIdToTicket;
+        loadingChecked = newLoadingChecked;
+        loadingMap = newLoadingMap;
+      });
+    }
   }
 
   updateChecked(index, value) {
@@ -121,7 +151,7 @@ class _AttendanceViewState extends State<AttendanceListView> {
 
   @override
   Widget build(BuildContext context) {
-    return (loadingChecked || loadingMap) ? renderLoad() : renderData();
+    return (loadingChecked && loadingMap) ? renderLoad() : ((loadingChecked || loadingMap) ? renderHalf() : renderData(context));
   }
 
   Widget renderLoad() {
@@ -131,13 +161,19 @@ class _AttendanceViewState extends State<AttendanceListView> {
     );
   }
 
-  Widget renderData() {
+  Widget renderHalf() {
+    return const Center(
+      child: CircularProgressIndicator(),
+    );
+  }
+
+  Widget renderData(BuildContext context) {
     return Container(
       margin: const EdgeInsets.fromLTRB(10, 10, 10, 10),
       child: Column(
         children: [
           Text(
-            'Attendees',
+            'Attendees ($checkedNo/${tickets.length})',
             style: Theme
             .of(context)
             .textTheme
@@ -145,13 +181,62 @@ class _AttendanceViewState extends State<AttendanceListView> {
           ),
           Container(
             margin: const EdgeInsets.only(top: 10, bottom: 10),
-            child: TextField(
-              onChanged: onQueryChanged,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Search',
-              )
-            ),
+            child: Column(
+              children: [
+                TextField(
+                  onChanged: (String? value) {
+                    value ??= "";
+                    setState(() {
+                      onQueryChanged(newQuery: value);
+                    });
+                  },
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: 'Search',
+                  )
+                ),
+                Row(
+                  children: [
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width / 2 * 0.9,
+                      ),
+                      child: SizedBox(
+                        width: 200,
+                        child: CheckboxListTile(
+                          title: const Text("Regular"),
+                          value: showRegular,
+                          onChanged: (bool? value) {
+                            value ??= false;
+                            setState(() {
+                              onQueryChanged(newShowRegular: value);
+                            });
+                          }
+                        )
+                      )
+                    ),
+                    ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width / 2 * 0.9,
+                        ),
+                        child: SizedBox(
+                            width: 200,
+                            child: CheckboxListTile(
+                                title: const Text("Non-regular"),
+                                value: showNonRegular,
+                                onChanged: (bool? value) {
+                                  value ??= false;
+                                  setState(() {
+                                    onQueryChanged(newShowNonRegular: value);
+                                  });
+                                }
+                            )
+                        )
+                    ),
+                  ]
+                )
+              ],
+            )
           ),
           Expanded(
             child: ListView.builder(
@@ -164,14 +249,22 @@ class _AttendanceViewState extends State<AttendanceListView> {
                       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
                       tileColor: Theme.of(context).colorScheme.primaryContainer,
                       leading: Checkbox(
-                        onChanged: (bool? value) {
+                        onChanged: widget.reviewMode ? null : (bool? value) {
                           updateChecked(index, value!);
                         },
                         value: showTickets[index].checked,
                       ),
-                      title: Text(
+                      title: showTickets[index].hidden ? Text(
+                        "${showTickets[index].name} (hidden)",
+                        style: const TextStyle(
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ) : Text(
                         showTickets[index].name,
                       ),
+                      subtitle: Text(
+                        showTickets[index].regular ? "Regular" : "Non-regular",
+                      )
                     ),
                   ),
                 );
