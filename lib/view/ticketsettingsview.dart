@@ -263,7 +263,9 @@ class _TicketListViewState extends State<TicketListView> {
           "regular": ticket.regular,
           "hidden": ticket.hidden,
         });
-        Logger.editTicket(original, ticket);
+        if (original.name != ticket.name || original.regular != ticket.regular || original.hidden != ticket.hidden) {
+          Logger.editTicket(original, ticket);
+        }
       } else if (res == "delete") {
         widget.db.collection("tickets").doc(ticket.id).delete();
 

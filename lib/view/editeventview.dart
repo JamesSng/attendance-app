@@ -36,7 +36,9 @@ class _EditEventViewState extends State<EditEventView> {
                 "date": Timestamp.fromDate(widget.event.date),
               }
             );
-            Logger.editEvent(widget.original, widget.event);
+            if (widget.original.name != widget.event.name || widget.original.date != widget.event.date) {
+              Logger.editEvent(widget.original, widget.event);
+            }
             Navigator.pop(context);
           },
           child: const Icon(Icons.arrow_back),
