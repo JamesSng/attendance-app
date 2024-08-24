@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import 'eventsettingsview.dart';
+import 'logssettingsview.dart';
 
 class SettingsView extends StatelessWidget {
   const SettingsView({super.key, required this.admin});
@@ -51,6 +52,7 @@ class SettingsView extends StatelessWidget {
               children: [
                 renderButton(context, "Manage Events", EventSettingsView()),
                 renderButton(context, "Manage Tickets", TicketSettingsView()),
+                renderButton(context, "View Logs", const LogsSettingsView()),
                 const Divider(
                   height: 20,
                   thickness: 1,

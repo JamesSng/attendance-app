@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../model/event.dart';
+import '../util/logger.dart';
 import 'editeventview.dart';
 
 class EventSettingsView extends StatefulWidget {
@@ -80,6 +81,11 @@ class _EventSettingsViewState extends State<EventSettingsView> {
           "name": newEventName,
           "date": Timestamp.fromDate(newEventDate),
         });
+        Logger.createEvent(Event(
+          id: "",
+          name: newEventName,
+          date: newEventDate
+        ));
         final batch = widget.db.batch();
         widget.db.collection("tickets").get().then((res) {
           for (final ticket in res.docs) {

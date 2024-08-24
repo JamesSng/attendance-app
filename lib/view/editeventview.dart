@@ -1,16 +1,23 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../model/event.dart';
+import '../util/logger.dart';
 import 'attendanceview.dart';
 
 class EditEventView extends StatefulWidget {
-  EditEventView({super.key, required this.event});
-  final Event event;
+  EditEventView({super.key, required this.event}) {
+    original.name = event.name;
+    original.date = event.date;
+  }
+  final Event event, original = Event(id: "", name: "", date: DateTime.now());
   final db = FirebaseFirestore.instance;
 
   @override
-  State<EditEventView> createState() => _EditEventViewState();
+  State<EditEventView> createState() {
+    return _EditEventViewState();
+  }
 }
 
 class _EditEventViewState extends State<EditEventView> {
@@ -29,11 +36,12 @@ class _EditEventViewState extends State<EditEventView> {
                 "date": Timestamp.fromDate(widget.event.date),
               }
             );
+            Logger.editEvent(widget.original, widget.event);
             Navigator.pop(context);
           },
           child: const Icon(Icons.arrow_back),
         ),
-        actions: [
+        actions: (kDebugMode) ? [
           TextButton(
             onPressed: () {
               showDialog(
@@ -64,8 +72,8 @@ class _EditEventViewState extends State<EditEventView> {
                     for (final doc in res.docs) {
                       batch.delete(doc.reference);
                     }
+                    batch.commit();
                   });
-                  batch.commit();
                   widget.db.collection("events").doc(widget.event.id).delete();
                   Navigator.pop(context);
                 }
@@ -73,7 +81,7 @@ class _EditEventViewState extends State<EditEventView> {
             },
             child: const Icon(Icons.delete),
           ),
-        ],
+        ] : [],
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(
           "Editing Event",

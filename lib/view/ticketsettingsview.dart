@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../model/ticket.dart';
+import '../util/logger.dart';
 
 class TicketSettingsView extends StatefulWidget {
   TicketSettingsView({super.key});
@@ -86,6 +88,13 @@ class _TicketSettingsViewState extends State<TicketSettingsView> {
           "regular": newRegular,
           "hidden": newHidden,
         });
+        Logger.createTicket(Ticket(
+          id: "",
+          name: newTicketName,
+          regular: newRegular,
+          hidden: newHidden)
+        );
+
         final batch = widget.db.batch();
         widget.db.collection("events").get().then((res) {
           for (final event in res.docs) {
@@ -147,6 +156,7 @@ class _TicketListViewState extends State<TicketListView> {
   bool showRegular = true, showNonRegular = true, showNonHidden = true, showHidden = false;
 
   void editTicket(BuildContext context, Ticket ticket) {
+    Ticket original = ticket.copy();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -195,7 +205,7 @@ class _TicketListViewState extends State<TicketListView> {
             );
           },
         ),
-        actions: [
+        actions: (kDebugMode) ? [
           TextButton(
             child: const Text("Delete"),
             onPressed: () {
@@ -235,6 +245,15 @@ class _TicketListViewState extends State<TicketListView> {
             child: const Text("Confirm"),
             onPressed: () { Navigator.pop(context, "confirm"); },
           ),
+        ] : [
+          TextButton(
+            child: const Text("Cancel"),
+            onPressed: () { Navigator.pop(context, "cancel"); },
+          ),
+          TextButton(
+            child: const Text("Confirm"),
+            onPressed: () { Navigator.pop(context, "confirm"); },
+          ),
         ]
       ),
     ).then((res){
@@ -244,6 +263,7 @@ class _TicketListViewState extends State<TicketListView> {
           "regular": ticket.regular,
           "hidden": ticket.hidden,
         });
+        Logger.editTicket(original, ticket);
       } else if (res == "delete") {
         widget.db.collection("tickets").doc(ticket.id).delete();
 
@@ -366,7 +386,7 @@ class _TicketListViewState extends State<TicketListView> {
                             child: SizedBox(
                                 width: 200,
                                 child: CheckboxListTile(
-                                    title: const Text("Non-regular"),
+                                    title: const Text("Others"),
                                     value: showNonRegular,
                                     onChanged: (bool? value) {
                                       value ??= false;
@@ -441,7 +461,7 @@ class _TicketListViewState extends State<TicketListView> {
                           showTickets[index].name,
                         ),
                         subtitle: Text(
-                          showTickets[index].regular ? "Regular" : "Non-regular",
+                          showTickets[index].regular ? "Regular" : "Others",
                         ),
                         trailing: const Icon(Icons.arrow_forward),
                         onTap: () {

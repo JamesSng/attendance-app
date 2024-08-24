@@ -222,7 +222,7 @@ class _AttendanceViewState extends State<AttendanceListView> {
                         child: SizedBox(
                             width: 200,
                             child: CheckboxListTile(
-                                title: const Text("Non-regular"),
+                                title: const Text("Others"),
                                 value: showNonRegular,
                                 onChanged: (bool? value) {
                                   value ??= false;
@@ -263,7 +263,7 @@ class _AttendanceViewState extends State<AttendanceListView> {
                         showTickets[index].name,
                       ),
                       subtitle: Text(
-                        showTickets[index].regular ? "Regular" : "Non-regular",
+                        showTickets[index].regular ? "Regular" : "Others",
                       )
                     ),
                   ),

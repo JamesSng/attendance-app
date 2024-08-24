@@ -12,4 +12,9 @@ class Event {
   String getDateString() {
     return dateFormat.format(date);
   }
+
+  @override
+  String toString() {
+    return "{name: $name, date: ${getDateString()}}";
+  }
 }

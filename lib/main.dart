@@ -1,3 +1,4 @@
+import 'package:attendance_app/util/logger.dart';
 import 'package:attendance_app/view/eventsview.dart';
 import 'package:attendance_app/view/settings.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -22,6 +23,7 @@ class AttendanceApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    Logger.init();
     return MaterialApp(
       title: 'CBC Attendance App',
       theme: ThemeData(
