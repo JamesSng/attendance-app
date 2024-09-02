@@ -5,9 +5,10 @@ import '../model/event.dart';
 import '../model/ticket.dart';
 
 class AttendanceView extends StatelessWidget {
-  const AttendanceView({super.key, required this.event});
+  const AttendanceView({super.key, required this.event, this.reviewMode = false});
 
   final Event event;
+  final bool reviewMode;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +26,7 @@ class AttendanceView extends StatelessWidget {
           style: Theme.of(context).textTheme.headlineSmall,
         ),
       ),
-      body: AttendanceListView(eventId: event.id),
+      body: AttendanceListView(eventId: event.id, reviewMode: reviewMode),
     );
   }
 }
@@ -66,11 +67,7 @@ class _AttendanceViewState extends State<AttendanceListView> {
       .where((t) => (showRegular && t.regular) || (showNonRegular && !t.regular))
       .toList();
     showTickets.sort((a, b) {
-      if (a.hidden == b.hidden) {
-        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-      } else {
-        return a.hidden ? 1 : -1;
-      }
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
     });
   }
 
@@ -115,7 +112,7 @@ class _AttendanceViewState extends State<AttendanceListView> {
         Ticket? newTicket = newIdToTicket[ticket.id];
         newTicket?.checked = ticket.checked;
 
-        if (newTicket != null && (!newTicket.hidden || widget.reviewMode)) {
+        if (newTicket != null) {
           filteredTickets.add(newTicket);
           if (newTicket.checked) {
             ++newChecked;
@@ -196,6 +193,7 @@ class _AttendanceViewState extends State<AttendanceListView> {
                   )
                 ),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     ConstrainedBox(
                       constraints: BoxConstraints(
@@ -249,17 +247,14 @@ class _AttendanceViewState extends State<AttendanceListView> {
                       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
                       tileColor: Theme.of(context).colorScheme.primaryContainer,
                       leading: Checkbox(
-                        onChanged: widget.reviewMode ? null : (bool? value) {
-                          updateChecked(index, value!);
+                        onChanged: (bool? value) {
+                          if (!widget.reviewMode) {
+                            updateChecked(index, value!);
+                          }
                         },
                         value: showTickets[index].checked,
                       ),
-                      title: showTickets[index].hidden ? Text(
-                        "${showTickets[index].name} (hidden)",
-                        style: const TextStyle(
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ) : Text(
+                      title: Text(
                         showTickets[index].name,
                       ),
                       subtitle: Text(

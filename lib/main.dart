@@ -1,5 +1,6 @@
 import 'package:attendance_app/util/logger.dart';
 import 'package:attendance_app/view/eventsview.dart';
+import 'package:attendance_app/view/history.dart';
 import 'package:attendance_app/view/settings.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -158,17 +159,15 @@ class _HomePageViewState extends State<HomePageView> {
   }
 
   Widget showHomePage(BuildContext context) {
-    // This method is rerun every time setState is called
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     Widget page;
     switch (selectedIndex) {
       case 0:
         page = EventsView();
         break;
       case 1:
+        page = const HistoryView();
+        break;
+      case 2:
         page = SettingsView(admin: admin);
         break;
       default:
@@ -197,6 +196,10 @@ class _HomePageViewState extends State<HomePageView> {
           NavigationDestination(
             icon: Icon(Icons.event),
             label: 'Events',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.history),
+            label: 'History'
           ),
           NavigationDestination(
             icon: Icon(Icons.settings),

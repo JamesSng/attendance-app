@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../model/event.dart';
 import '../util/logger.dart';
-import 'editeventview.dart';
 
 class EventSettingsView extends StatefulWidget {
   EventSettingsView({super.key});
