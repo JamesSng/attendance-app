@@ -88,7 +88,7 @@ class _EventSettingsViewState extends State<EventSettingsView> {
           date: newEventDate
         ));
         final batch = widget.db.batch();
-        widget.db.collection("tickets").where("hidden", isEqualTo: true).get().then((res) {
+        widget.db.collection("tickets").where("hidden", isEqualTo: false).get().then((res) {
           for (final ticket in res.docs) {
             final ref = event.collection("attendees").doc(ticket.id);
             batch.set(ref, {"checked": false});
