@@ -17,4 +17,8 @@ class Event {
   String toString() {
     return "{name: $name, date: ${getDateString()}}";
   }
+
+  Event copy(){
+    return Event(id: id, name: name, date: date);
+  }
 }

@@ -28,44 +28,37 @@ class _TicketSettingsViewState extends State<TicketSettingsView> {
         content: StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
             return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                      padding: const EdgeInsets.all(10),
-                      child: Column(
-                          children: [
-                            TextField(
-                              controller: TextEditingController(),
-                              decoration: const InputDecoration(
-                                border: OutlineInputBorder(),
-                                labelText: 'Name',
-                              ),
-                              onChanged: (text) {
-                                newTicketName = text;
-                              },
-                            ),
-                            CheckboxListTile(
-                                title: const Text("Regular"),
-                                value: newRegular,
-                                onChanged: (value) {
-                                  setState(() {
-                                    newRegular = value!;
-                                  });
-                                }
-                            ),
-                            CheckboxListTile(
-                                title: const Text("Hidden"),
-                                value: newHidden,
-                                onChanged: (value) {
-                                  setState(() {
-                                    newHidden = value!;
-                                  });
-                                }
-                            )
-                          ]
-                      )
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: TextEditingController(),
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: 'Name',
                   ),
-                ]
+                  onChanged: (text) {
+                    newTicketName = text;
+                  },
+                ),
+                CheckboxListTile(
+                  title: const Text("Regular"),
+                  value: newRegular,
+                  onChanged: (value) {
+                    setState(() {
+                      newRegular = value!;
+                    });
+                  }
+                ),
+                CheckboxListTile(
+                  title: const Text("Hidden"),
+                  value: newHidden,
+                  onChanged: (value) {
+                    setState(() {
+                      newHidden = value!;
+                    });
+                  }
+                )
+              ]
             );
           }
         ),
@@ -94,15 +87,6 @@ class _TicketSettingsViewState extends State<TicketSettingsView> {
           regular: newRegular,
           hidden: newHidden)
         );
-
-        final batch = widget.db.batch();
-        widget.db.collection("events").get().then((res) {
-          for (final event in res.docs) {
-            final ref = event.reference.collection("attendees").doc(ticket.id);
-            batch.set(ref, {"checked": false});
-          }
-          batch.commit();
-        });
       }
     });
   }
@@ -258,25 +242,16 @@ class _TicketListViewState extends State<TicketListView> {
       ),
     ).then((res){
       if (res == "confirm") {
-        widget.db.collection("tickets").doc(ticket.id).set({
-          "name": ticket.name,
-          "regular": ticket.regular,
-          "hidden": ticket.hidden,
-        });
         if (original.name != ticket.name || original.regular != ticket.regular || original.hidden != ticket.hidden) {
+          widget.db.collection("tickets").doc(ticket.id).set({
+            "name": ticket.name,
+            "regular": ticket.regular,
+            "hidden": ticket.hidden,
+          });
           Logger.editTicket(original, ticket);
         }
       } else if (res == "delete") {
         widget.db.collection("tickets").doc(ticket.id).delete();
-
-        final batch = widget.db.batch();
-        widget.db.collection("events").get().then((res) {
-          for (final event in res.docs) {
-            final ref = event.reference.collection("attendees").doc(ticket.id);
-            batch.delete(ref);
-          }
-          batch.commit();
-        });
       }
     });
   }
