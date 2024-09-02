@@ -8,11 +8,11 @@ import 'eventsettingsview.dart';
 import 'logssettingsview.dart';
 
 class SettingsView extends StatelessWidget {
-  const SettingsView({super.key, required this.admin});
+  const SettingsView({super.key, required this.role});
 
-  final bool admin;
+  final String role;
 
-  Widget renderButton(BuildContext context, String text, Widget page) {
+  Widget renderButton(BuildContext context, String text, Icon icon, Widget page) {
     return Container(
       margin: const EdgeInsets.only(top: 5, bottom: 5),
       child: FilledButton(
@@ -28,6 +28,10 @@ class SettingsView extends StatelessWidget {
         ),
         child: Row(
           children: [
+            Container(
+              padding: const EdgeInsets.only(right: 5),
+              child: icon,
+            ),
             Expanded(
               child: Text(
                 text,
@@ -45,40 +49,41 @@ class SettingsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-      return SizedBox.expand(
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-          child: admin ? Column(
-              children: [
-                renderButton(context, "Manage Events", EventSettingsView()),
-                renderButton(context, "Manage Tickets", TicketSettingsView()),
-                renderButton(context, "View Logs", const LogsSettingsView()),
-                const Divider(
-                  height: 20,
-                  thickness: 1,
-                  color: Colors.black,
-                ),
-                FilledButton(
-                  onPressed: () { logout(context); },
-                  style: const ButtonStyle(
-                    shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)))),
-                  ),
-                  child: const Text("Logout"),
-                ),
-              ]
-          ) : Column(
-              children: [
-                FilledButton(
-                  onPressed: () { logout(context); },
-                  style: const ButtonStyle(
-                    shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)))),
-                  ),
-                  child: const Text("Logout"),
-                ),
-              ]
-          ),
+    final Widget logoutWidget = Column(
+      children: [
+        Text(
+          "Signed in as ${FirebaseAuth.instance.currentUser?.email} ($role)",
+          style: Theme.of(context).textTheme.headlineSmall,
+          textAlign: TextAlign.center,
         ),
-      );
+        FilledButton(
+          onPressed: () { logout(context); },
+          style: const ButtonStyle(
+            shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)))),
+          ),
+          child: const Text("Logout"),
+        ),
+      ]
+    );
+
+    return SizedBox.expand(
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+        child: role == "admin" ? Column(
+            children: [
+              renderButton(context, "Manage Events", const Icon(Icons.event), EventSettingsView()),
+              renderButton(context, "Manage Tickets", const Icon(Icons.confirmation_num_outlined), TicketSettingsView()),
+              renderButton(context, "View Logs", const Icon(Icons.description_outlined), const LogsSettingsView()),
+              const Divider(
+                height: 20,
+                thickness: 1,
+                color: Colors.black,
+              ),
+              logoutWidget
+            ]
+        ) : logoutWidget
+      ),
+    );
   }
 
   void logout(BuildContext context) {

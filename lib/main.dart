@@ -1,7 +1,7 @@
 import 'package:attendance_app/util/logger.dart';
 import 'package:attendance_app/view/eventsview.dart';
-import 'package:attendance_app/view/history.dart';
-import 'package:attendance_app/view/settings.dart';
+import 'package:attendance_app/view/historyview.dart';
+import 'package:attendance_app/view/settingsview.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -47,41 +47,78 @@ class HomePageView extends StatefulWidget {
 }
 
 class _HomePageViewState extends State<HomePageView> {
-  var selectedIndex = 0;
-  var loggedin = false;
-  var initialized = false;
-  var admin = false;
+  int selectedIndex = 0;
+  bool loggedIn = false, initialized = false;
+  String role = "disabled";
+  List<Widget> pages = [];
+  List<Widget> tabs = [];
+
+  void buildPages() {
+    Widget eventPage = EventsView(), historyPage = const HistoryView(), settingsPage = SettingsView(role: role);
+    Widget eventTab = const NavigationDestination(
+      icon: Icon(Icons.event),
+      label: 'Events',
+    );
+    Widget historyTab = const NavigationDestination(
+      icon: Icon(Icons.history),
+      label: 'History'
+    );
+    Widget settingsTab = const NavigationDestination(
+      icon: Icon(Icons.settings),
+      label: 'Settings',
+    );
+
+    switch (role) {
+      case "admin":
+        pages = [eventPage, historyPage, settingsPage];
+        tabs = [eventTab, historyTab, settingsTab];
+      case "usher":
+        pages = [eventPage, settingsPage];
+        tabs = [eventTab, settingsTab];
+      case "auditor":
+        pages = [historyPage, settingsPage];
+        tabs = [historyTab, settingsTab];
+      default:
+        pages = [settingsPage];
+        tabs = [settingsTab];
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     if (!initialized) {
-      initialized = true;
       widget.auth.authStateChanges().listen(
         (User? user) {
+          print("hello");
           if (user == null) {
             setState(() {
-              loggedin = false;
+              loggedIn = false;
             });
           } else {
             String? uid = widget.auth.currentUser?.uid;
             if (uid != null) {
               widget.db.collection("users").doc(uid).get().then((res) {
                 if (!res.exists) {
-                  res.reference.set({"admin": false});
-                } else if (res.get('admin') == true) {
-                  admin = true;
+                  res.reference.set({"role": "disabled"});
+                } else {
+                  role = res.get("role");
                 }
                 setState(() {
-                  loggedin = true;
+                  loggedIn = true;
+                  print("logged in");
+                  buildPages();
                 });
               });
             }
           }
         }
       );
+      setState(() {
+        initialized = true;
+      });
     }
 
-    if (!loggedin) {
+    if (!loggedIn) {
       return showLogin(context);
     }
     return showHomePage(context);
@@ -160,28 +197,15 @@ class _HomePageViewState extends State<HomePageView> {
 
   Widget showHomePage(BuildContext context) {
     Widget page;
-    switch (selectedIndex) {
-      case 0:
-        page = EventsView();
-        break;
-      case 1:
-        page = const HistoryView();
-        break;
-      case 2:
-        page = SettingsView(admin: admin);
-        break;
-      default:
-        throw UnimplementedError('no widget for $selectedIndex');
+    if (0 <= selectedIndex && selectedIndex < pages.length) {
+      page = pages[selectedIndex];
+    } else {
+      throw UnimplementedError('no widget for $selectedIndex');
     }
 
-    return Scaffold(
+    return role != "disabled" ? Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
         title: Text(
           'CBC Attendance App',
           style: Theme.of(context).textTheme.headlineMedium,
@@ -192,20 +216,7 @@ class _HomePageViewState extends State<HomePageView> {
         child: page,
       ),
       bottomNavigationBar: NavigationBar(
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.event),
-            label: 'Events',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.history),
-            label: 'History'
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
+        destinations: tabs,
         selectedIndex: selectedIndex,    // ← Change to this.
         onDestinationSelected: (value) {
           setState(() {
@@ -213,6 +224,18 @@ class _HomePageViewState extends State<HomePageView> {
           });
         },
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      ),
+    ) : Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text(
+          'CBC Attendance App',
+          style: Theme.of(context).textTheme.headlineMedium,
+        ),
+      ),
+      body: Container(
+        color: Theme.of(context).colorScheme.surface,
+        child: SettingsView(role: role),
       ),
     );
   }

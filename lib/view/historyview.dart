@@ -6,7 +6,7 @@ import 'eventhistoryview.dart';
 class HistoryView extends StatelessWidget {
   const HistoryView({super.key});
 
-  Widget renderButton(BuildContext context, String text, Widget page) {
+  Widget renderButton(BuildContext context, String text, Icon icon, Widget page) {
     return Container(
       margin: const EdgeInsets.only(top: 5, bottom: 5),
       child: FilledButton(
@@ -22,6 +22,10 @@ class HistoryView extends StatelessWidget {
         ),
         child: Row(
           children: [
+            Container(
+              padding: const EdgeInsets.only(right: 5),
+              child: icon,
+            ),
             Expanded(
               child: Text(
                 text,
@@ -44,8 +48,8 @@ class HistoryView extends StatelessWidget {
           margin: const EdgeInsets.fromLTRB(10, 10, 10, 10),
           child: Column(
               children: [
-                renderButton(context, "Event History", const EventHistoryView()),
-                renderButton(context, "Ticket History", const TicketHistoryView()),
+                renderButton(context, "Event History", const Icon(Icons.event), const EventHistoryView()),
+                renderButton(context, "Ticket History", const Icon(Icons.confirmation_num_outlined), const TicketHistoryView()),
               ]
           )
         ),
