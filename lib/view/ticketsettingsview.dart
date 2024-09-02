@@ -37,9 +37,7 @@ class _TicketSettingsViewState extends State<TicketSettingsView> {
                     labelText: 'Name',
                   ),
                   onChanged: (text) {
-                    setState(() {
-                      newTicketName = text;
-                    });
+                    newTicketName = text;
                   },
                 ),
                 CheckboxListTile(
