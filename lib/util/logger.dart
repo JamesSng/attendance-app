@@ -89,4 +89,17 @@ class Logger {
       }
     );
   }
+
+  static void changeRole(String o, String n, String email) {
+    String log =
+      "${getDisplayName()} "
+      "updated $email's role from "
+      "$o to $n";
+    db.collection("logs").doc().set(
+      {
+        "log": log,
+        "time": Timestamp.now(),
+      }
+    );
+  }
 }

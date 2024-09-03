@@ -1,4 +1,5 @@
 import 'package:attendance_app/view/ticketsettingsview.dart';
+import 'package:attendance_app/view/usersettingsview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -73,6 +74,7 @@ class SettingsView extends StatelessWidget {
             children: [
               renderButton(context, "Manage Events", const Icon(Icons.event), EventSettingsView()),
               renderButton(context, "Manage Tickets", const Icon(Icons.confirmation_num_outlined), TicketSettingsView()),
+              renderButton(context, "Manage Users", const Icon(Icons.person_outlined), const UserSettingsView()),
               renderButton(context, "View Logs", const Icon(Icons.description_outlined), const LogsSettingsView()),
               const Divider(
                 height: 20,

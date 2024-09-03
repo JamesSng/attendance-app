@@ -89,7 +89,6 @@ class _HomePageViewState extends State<HomePageView> {
     if (!initialized) {
       widget.auth.authStateChanges().listen(
         (User? user) {
-          print("hello");
           if (user == null) {
             setState(() {
               loggedIn = false;
@@ -99,13 +98,15 @@ class _HomePageViewState extends State<HomePageView> {
             if (uid != null) {
               widget.db.collection("users").doc(uid).get().then((res) {
                 if (!res.exists) {
-                  res.reference.set({"role": "disabled"});
+                  res.reference.set({
+                    "email": widget.auth.currentUser?.email,
+                    "role": "disabled"
+                  });
                 } else {
                   role = res.get("role");
                 }
                 setState(() {
                   loggedIn = true;
-                  print("logged in");
                   buildPages();
                 });
               });
