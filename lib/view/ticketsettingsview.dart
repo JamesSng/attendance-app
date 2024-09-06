@@ -1,3 +1,4 @@
+import 'package:attendance_app/view/ticketlistview.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -107,7 +108,9 @@ class _TicketSettingsViewState extends State<TicketSettingsView> {
         style: Theme.of(context).textTheme.headlineSmall,
         ),
       ),
-      body: TicketListView(),
+      body: TicketListView(onTicketPressed: (Ticket ticket) {
+        EditTicketHelper().editTicket(context, ticket);
+      }),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () {
@@ -118,27 +121,8 @@ class _TicketSettingsViewState extends State<TicketSettingsView> {
   }
 }
 
-class TicketListView extends StatefulWidget {
-  TicketListView({super.key});
+class EditTicketHelper {
   final db = FirebaseFirestore.instance;
-
-  @override
-  State<TicketListView> createState() => _TicketListViewState();
-}
-
-class _TicketListViewState extends State<TicketListView> {
-  @override
-  void setState(fn) {
-    if(mounted) {
-      super.setState(fn);
-    }
-  }
-
-  bool loading = true;
-  List<Ticket> tickets = [], showTickets = [];
-  String query = '';
-  bool showRegular = true, showNonRegular = true, showNonHidden = true, showHidden = false;
-
   void editTicket(BuildContext context, Ticket ticket) {
     Ticket original = ticket.copy();
     showDialog(
@@ -243,7 +227,7 @@ class _TicketListViewState extends State<TicketListView> {
     ).then((res){
       if (res == "confirm") {
         if (original.name != ticket.name || original.regular != ticket.regular || original.hidden != ticket.hidden) {
-          widget.db.collection("tickets").doc(ticket.id).set({
+          db.collection("tickets").doc(ticket.id).set({
             "name": ticket.name,
             "regular": ticket.regular,
             "hidden": ticket.hidden,
@@ -251,10 +235,10 @@ class _TicketListViewState extends State<TicketListView> {
           Logger.editTicket(original, ticket);
         }
       } else if (res == "delete") {
-        widget.db.collection("tickets").doc(ticket.id).delete();
+        db.collection("tickets").doc(ticket.id).delete();
 
-        final batch = widget.db.batch();
-        widget.db.collection("events").get().then((res) {
+        final batch = db.batch();
+        db.collection("events").get().then((res) {
           for (final event in res.docs) {
             final ref = event.reference.collection("attendees").doc(ticket.id);
             batch.delete(ref);
@@ -263,199 +247,5 @@ class _TicketListViewState extends State<TicketListView> {
         });
       }
     });
-  }
-
-  void onQueryChanged({String? newQuery, bool? newShowRegular, bool? newShowNonRegular, bool? newShowNonHidden, bool? newShowHidden}) {
-    if (newQuery != null) query = newQuery;
-    if (newShowRegular != null) showRegular = newShowRegular;
-    if (newShowNonRegular != null) showNonRegular = newShowNonRegular;
-    if (newShowNonHidden != null) showNonHidden = newShowNonHidden;
-    if (newShowHidden != null) showHidden = newShowHidden;
-    showTickets = tickets
-        .where((t) => t.name.toLowerCase().contains(query.toLowerCase()))
-        .where((t) => (showRegular && t.regular) || (showNonRegular && !t.regular))
-        .where((t) => (showNonHidden && !t.hidden) || (showHidden && t.hidden))
-        .toList();
-    showTickets.sort((a, b) {
-      if (a.hidden == b.hidden) {
-        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-      } else {
-        return a.hidden ? 1 : -1;
-      }
-    });
-  }
-
-  loadData() {
-    widget.db.collection("tickets").snapshots().listen((res) {
-      List<Ticket> newTickets = [];
-      for (var ticket in res.docs) {
-        newTickets.add(Ticket(
-            id: ticket.id,
-            name: ticket.get("name"),
-            regular: ticket.get("regular"),
-            hidden: ticket.get("hidden"),
-            checked: false,
-        ));
-      }
-
-      setState(() {
-        tickets = newTickets;
-        loading = false;
-        onQueryChanged();
-      });
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return loading ? renderLoad() : renderData();
-  }
-
-  Widget renderLoad() {
-    loadData();
-    return const Center(
-      child: CircularProgressIndicator(),
-    );
-  }
-
-  Widget renderData() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-      child: Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 10, bottom: 10),
-              child: Column(
-                children: [
-                  TextField(
-                    onChanged: (query) {
-                      setState(() {
-                        onQueryChanged(newQuery: query);
-                      });
-                    },
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Search',
-                    )
-                  ),
-                  Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: MediaQuery.of(context).size.width / 2 * 0.9,
-                            ),
-                            child: SizedBox(
-                                width: 200,
-                                child: CheckboxListTile(
-                                    title: const Text("Regular"),
-                                    value: showRegular,
-                                    onChanged: (bool? value) {
-                                      value ??= false;
-                                      setState(() {
-                                        onQueryChanged(newShowRegular: value);
-                                      });
-                                    }
-                                )
-                            )
-                        ),
-                        ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: MediaQuery.of(context).size.width / 2 * 0.9,
-                            ),
-                            child: SizedBox(
-                                width: 200,
-                                child: CheckboxListTile(
-                                    title: const Text("Others"),
-                                    value: showNonRegular,
-                                    onChanged: (bool? value) {
-                                      value ??= false;
-                                      setState(() {
-                                        onQueryChanged(newShowNonRegular: value);
-                                      });
-                                    }
-                                )
-                            )
-                        ),
-                      ]
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width / 2 * 0.9,
-                        ),
-                        child: SizedBox(
-                          width: 200,
-                          child: CheckboxListTile(
-                            title: const Text("Non-hidden"),
-                            value: showNonHidden,
-                            onChanged: (bool? value) {
-                              value ??= false;
-                              setState(() {
-                                onQueryChanged(newShowNonHidden: value);
-                              });
-                            }
-                          )
-                        )
-                      ),
-                      ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width / 2 * 0.9,
-                        ),
-                        child: SizedBox(
-                          width: 200,
-                          child: CheckboxListTile(
-                            title: const Text("Hidden"),
-                            value: showHidden,
-                            onChanged: (bool? value) {
-                              value ??= false;
-                              setState(() {
-                                onQueryChanged(newShowHidden: value);
-                              });
-                            }
-                          )
-                        )
-                      ),
-                    ]
-                  ),
-                ]
-              ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: showTickets.length,
-                itemBuilder: (BuildContext context, int index) {
-                  return Container(
-                    margin: const EdgeInsets.only(top: 5, bottom: 5),
-                    child: Material(
-                      child: ListTile(
-                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
-                        tileColor: Theme.of(context).colorScheme.secondaryContainer,
-                        title: showTickets[index].hidden ? Text(
-                          "${showTickets[index].name} (hidden)",
-                          style: const TextStyle(
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ) : Text(
-                          showTickets[index].name,
-                        ),
-                        subtitle: Text(
-                          showTickets[index].regular ? "Regular" : "Others",
-                        ),
-                        trailing: const Icon(Icons.arrow_forward),
-                        onTap: () {
-                          editTicket(context, showTickets[index]);
-                        }
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ]
-      ),
-    );
   }
 }

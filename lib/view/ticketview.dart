@@ -176,77 +176,80 @@ class _TicketEventViewState extends State<TicketEventView> {
     return Container(
       margin: const EdgeInsets.fromLTRB(10, 10, 10, 10),
       child: Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 10, bottom: 10),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width / 2 * 0.9,
-                        ),
-                        child: SizedBox(
-                            width: 200,
-                            child: TextField(
-                              readOnly: true,
-                              controller: lowDateController,
-                              decoration: const InputDecoration(
-                                border: OutlineInputBorder(),
-                                labelText: 'From',
-                              ),
-                              onTap: () {
-                                _selectLowDate(context);
-                              },
-                            )
-                        )
-                      ),
-                      ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: MediaQuery.of(context).size.width / 2 * 0.9,
-                          ),
-                          child: SizedBox(
-                              width: 200,
-                              child: TextField(
-                                readOnly: true,
-                                controller: highDateController,
-                                decoration: const InputDecoration(
-                                  border: OutlineInputBorder(),
-                                  labelText: 'To',
-                                ),
-                                onTap: () {
-                                  _selectHighDate(context);
-                                },
-                              )
-                          )
-                      ),
-                    ]
+        children: [
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            child: Text(
+                "Showing Attendance",
+                style: Theme.of(context).textTheme.headlineSmall
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width / 2 * 0.9,
                   ),
-                ]
-              ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: events.length,
-                itemBuilder: (BuildContext context, int index) {
-                  return Container(
-                    margin: const EdgeInsets.only(top: 5, bottom: 5),
-                    child: Material(
-                      child: ListTile(
-                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
-                        tileColor: Theme.of(context).colorScheme.secondaryContainer,
-                        title: Text(events[index].name),
-                        subtitle: Text(events[index].getDateString()),
-                        leading: Checkbox(value: checked[index], onChanged: (v) {}),
-                      ),
+                  child: SizedBox(
+                      width: 200,
+                      child: TextField(
+                        readOnly: true,
+                        controller: lowDateController,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: 'From',
+                        ),
+                        onTap: () {
+                          _selectLowDate(context);
+                        },
+                      )
+                  )
+                ),
+                ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width / 2 * 0.9,
                     ),
-                  );
-                },
-              ),
+                    child: SizedBox(
+                        width: 200,
+                        child: TextField(
+                          readOnly: true,
+                          controller: highDateController,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            labelText: 'To',
+                          ),
+                          onTap: () {
+                            _selectHighDate(context);
+                          },
+                        )
+                    )
+                ),
+              ]
             ),
-          ]
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: events.length,
+              itemBuilder: (BuildContext context, int index) {
+                return Container(
+                  margin: const EdgeInsets.only(top: 5, bottom: 5),
+                  child: Material(
+                    child: ListTile(
+                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
+                      tileColor: Theme.of(context).colorScheme.secondaryContainer,
+                      title: Text(events[index].name),
+                      subtitle: Text(events[index].getDateString()),
+                      leading: Checkbox(value: checked[index], onChanged: (v) {}),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ]
       ),
     );
   }

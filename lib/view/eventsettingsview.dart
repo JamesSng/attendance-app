@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../model/event.dart';
 import '../util/logger.dart';
+import 'eventlistview.dart';
 
 class EventSettingsView extends StatefulWidget {
   EventSettingsView({super.key});
@@ -134,47 +135,17 @@ class _EventSettingsViewState extends State<EventSettingsView> {
           createEvent(context);
         },
       ),
-      body: EventListView(),
+      body: EventListView(onEventPressed: (Event event) {
+        EditEventHelper().editEvent(context, event);
+      }),
     );
   }
 }
 
-class EventListView extends StatefulWidget {
-  EventListView({super.key});
+class EditEventHelper {
   final db = FirebaseFirestore.instance;
-
-  @override
-  State<EventListView> createState() => _EventListViewState();
-}
-
-class _EventListViewState extends State<EventListView> {
-  @override
-  void setState(fn) {
-    if(mounted) {
-      super.setState(fn);
-    }
-  }
-
-  bool loading = true;
   late TextEditingController dateController;
   late Event curEvent;
-  List<Event> events = [];
-
-  loadData() {
-    widget.db.collection("events").orderBy('date', descending: true).snapshots().listen((res) {
-      List<Event> newEvents = [];
-      for (var event in res.docs) {
-        newEvents.add(Event(
-            id: event.id,
-            name: event.get('name'),
-            date: event.get('date').toDate()));
-      }
-      setState(() {
-        events = newEvents;
-        loading = false;
-      });
-    });
-  }
 
   _selectDate(BuildContext context) async {
     DateTime? selectedDate = await showDatePicker(
@@ -285,7 +256,7 @@ class _EventListViewState extends State<EventListView> {
     ).then((res){
       if (res == "confirm") {
         if (original.name != curEvent.name || original.date != curEvent.date) {
-          widget.db.collection("events").doc(curEvent.id).set(
+          db.collection("events").doc(curEvent.id).set(
               {
                 "name": curEvent.name,
                 "date": Timestamp.fromDate(curEvent.date),
@@ -294,80 +265,15 @@ class _EventListViewState extends State<EventListView> {
           Logger.editEvent(original, curEvent);
         }
       } else if (res == "delete") {
-        final batch = widget.db.batch();
-        widget.db.collection("events").doc(curEvent.id).collection("attendees").get().then((res) {
+        final batch = db.batch();
+        db.collection("events").doc(curEvent.id).collection("attendees").get().then((res) {
           for (final doc in res.docs) {
             batch.delete(doc.reference);
           }
           batch.commit();
         });
-        widget.db.collection("events").doc(curEvent.id).delete();
+        db.collection("events").doc(curEvent.id).delete();
       }
     });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return loading ? renderLoad() : renderData();
-  }
-
-  Widget renderLoad() {
-    loadData();
-    return const Center(
-      child: CircularProgressIndicator(),
-    );
-  }
-
-  Widget renderData() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-      child: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              itemCount: events.length,
-              itemBuilder: (BuildContext context, int index) {
-                return Container(
-                  margin: const EdgeInsets.only(top: 5, bottom: 5),
-                  child: FilledButton(
-                    onPressed: (){
-                      editEvent(context, events[index]);
-                    },
-                    style: const ButtonStyle(
-                      padding: WidgetStatePropertyAll(EdgeInsets.all(15)),
-                      shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)))),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                events[index].name,
-                                style: TextStyle(
-                                  fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
-                                )
-                              ),
-                              Text(
-                                events[index].getDateString(),
-                                style: TextStyle(
-                                  fontSize: Theme.of(context).textTheme.labelLarge?.fontSize,
-                                )
-                              ),
-                            ]
-                          ),
-                        ),
-                        const Icon(Icons.arrow_forward),
-                      ]
-                    )
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      )
-    );
   }
 }
