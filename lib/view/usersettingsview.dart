@@ -120,7 +120,12 @@ class _UserListViewState extends State<UserListView> {
                       child: ListTile(
                         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
                         tileColor: Theme.of(context).colorScheme.secondaryContainer,
-                        title: Text(showUsers[index].email),
+                        title: Text(
+                          showUsers[index].email,
+                          style: TextStyle(
+                            fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
+                          )
+                        ),
                         contentPadding: const EdgeInsets.all(15),
                         trailing: DropdownMenu<String>(
                           initialSelection: showUsers[index].role,

@@ -240,8 +240,18 @@ class _TicketEventViewState extends State<TicketEventView> {
                     child: ListTile(
                       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
                       tileColor: Theme.of(context).colorScheme.secondaryContainer,
-                      title: Text(events[index].name),
-                      subtitle: Text(events[index].getDateString()),
+                      title: Text(
+                        events[index].name,
+                        style: TextStyle(
+                          fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                        )
+                      ),
+                      subtitle: Text(
+                        events[index].getDateString(),
+                        style: TextStyle(
+                          fontSize: Theme.of(context).textTheme.titleMedium?.fontSize,
+                        )
+                      ),
                       leading: Checkbox(value: checked[index], onChanged: (v) {}),
                     ),
                   ),

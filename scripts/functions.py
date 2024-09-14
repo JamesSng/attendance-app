@@ -25,10 +25,9 @@ def loadCSV(filename):
 		for line in f:
 			addTicket(line.strip())
 
-regular = []
-
-with open("worshippers_regular.csv") as f:
-	for line in f:
-		regular.append(line.strip())
-
-loadCSV("worshippers.csv")
+for ticket in db.collection("tickets").stream():
+	print(ticket.to_dict())
+	data = ticket.to_dict()
+	newData = {'name': data['name'], 'regular': data['regular'], 'active': True}
+	if 'hidden' in data:
+		ticket.reference.set(newData)

@@ -23,24 +23,24 @@ class _TicketListViewState extends State<TicketListView> {
   bool loading = true;
   List<Ticket> tickets = [], showTickets = [];
   String query = '';
-  bool showRegular = true, showNonRegular = true, showNonHidden = true, showHidden = false;
+  bool showRegular = true, showNonRegular = true, showActive = true, showInactive = false;
 
-  void onQueryChanged({String? newQuery, bool? newShowRegular, bool? newShowNonRegular, bool? newShowNonHidden, bool? newShowHidden}) {
+  void onQueryChanged({String? newQuery, bool? newShowRegular, bool? newShowNonRegular, bool? newShowActive, bool? newShowInactive}) {
     if (newQuery != null) query = newQuery;
     if (newShowRegular != null) showRegular = newShowRegular;
     if (newShowNonRegular != null) showNonRegular = newShowNonRegular;
-    if (newShowNonHidden != null) showNonHidden = newShowNonHidden;
-    if (newShowHidden != null) showHidden = newShowHidden;
+    if (newShowActive != null) showActive = newShowActive;
+    if (newShowInactive != null) showInactive = newShowInactive;
     showTickets = tickets
         .where((t) => t.name.toLowerCase().contains(query.toLowerCase()))
         .where((t) => (showRegular && t.regular) || (showNonRegular && !t.regular))
-        .where((t) => (showNonHidden && !t.hidden) || (showHidden && t.hidden))
+        .where((t) => (showActive && t.active) || (showInactive && !t.active))
         .toList();
     showTickets.sort((a, b) {
-      if (a.hidden == b.hidden) {
+      if (a.active == b.active) {
         return a.name.toLowerCase().compareTo(b.name.toLowerCase());
       } else {
-        return a.hidden ? 1 : -1;
+        return a.active ? -1 : 1;
       }
     });
   }
@@ -53,7 +53,7 @@ class _TicketListViewState extends State<TicketListView> {
           id: ticket.id,
           name: ticket.get("name"),
           regular: ticket.get("regular"),
-          hidden: ticket.get("hidden"),
+          active: ticket.get("active"),
           checked: false,
         ));
       }
@@ -80,7 +80,7 @@ class _TicketListViewState extends State<TicketListView> {
 
   Widget renderData() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+      margin: const EdgeInsets.all(10),
       child: Column(
           children: [
             Container(
@@ -108,7 +108,12 @@ class _TicketListViewState extends State<TicketListView> {
                               child: SizedBox(
                                   width: 200,
                                   child: CheckboxListTile(
-                                      title: const Text("Regular"),
+                                      title: Text(
+                                        "Regular",
+                                        style: TextStyle(
+                                          fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                                        )
+                                      ),
                                       value: showRegular,
                                       onChanged: (bool? value) {
                                         value ??= false;
@@ -126,7 +131,12 @@ class _TicketListViewState extends State<TicketListView> {
                               child: SizedBox(
                                   width: 200,
                                   child: CheckboxListTile(
-                                      title: const Text("Others"),
+                                      title: Text(
+                                          "Others",
+                                          style: TextStyle(
+                                            fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                                          )
+                                      ),
                                       value: showNonRegular,
                                       onChanged: (bool? value) {
                                         value ??= false;
@@ -149,12 +159,17 @@ class _TicketListViewState extends State<TicketListView> {
                               child: SizedBox(
                                   width: 200,
                                   child: CheckboxListTile(
-                                      title: const Text("Non-hidden"),
-                                      value: showNonHidden,
+                                      title: Text(
+                                          "Active",
+                                          style: TextStyle(
+                                            fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                                          )
+                                      ),
+                                      value: showActive,
                                       onChanged: (bool? value) {
                                         value ??= false;
                                         setState(() {
-                                          onQueryChanged(newShowNonHidden: value);
+                                          onQueryChanged(newShowActive: value);
                                         });
                                       }
                                   )
@@ -167,12 +182,17 @@ class _TicketListViewState extends State<TicketListView> {
                               child: SizedBox(
                                   width: 200,
                                   child: CheckboxListTile(
-                                      title: const Text("Hidden"),
-                                      value: showHidden,
+                                      title: Text(
+                                          "Inactive",
+                                          style: TextStyle(
+                                            fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                                          )
+                                      ),
+                                      value: showInactive,
                                       onChanged: (bool? value) {
                                         value ??= false;
                                         setState(() {
-                                          onQueryChanged(newShowHidden: value);
+                                          onQueryChanged(newShowInactive: value);
                                         });
                                       }
                                   )
@@ -193,16 +213,23 @@ class _TicketListViewState extends State<TicketListView> {
                       child: ListTile(
                           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
                           tileColor: Theme.of(context).colorScheme.secondaryContainer,
-                          title: showTickets[index].hidden ? Text(
-                            "${showTickets[index].name} (hidden)",
-                            style: const TextStyle(
+                          title: !showTickets[index].active ? Text(
+                            "${showTickets[index].name} (inactive)",
+                            style: TextStyle(
                               fontStyle: FontStyle.italic,
+                              fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
                             ),
                           ) : Text(
                             showTickets[index].name,
+                            style: TextStyle(
+                              fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                            )
                           ),
                           subtitle: Text(
                             showTickets[index].regular ? "Regular" : "Others",
+                            style: TextStyle(
+                              fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
+                            )
                           ),
                           trailing: const Icon(Icons.arrow_forward),
                           onTap: () {

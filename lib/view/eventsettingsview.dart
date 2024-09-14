@@ -66,12 +66,26 @@ class _EventSettingsViewState extends State<EventSettingsView> {
         ),
         actions: [
           TextButton(
-            child: const Text("Cancel"),
+            child: Text(
+              "Cancel",
+              style: TextStyle(
+                  fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
+              )
+            ),
             onPressed: () { Navigator.pop(context, false); },
           ),
-          TextButton(
-            child: const Text("Confirm"),
+          FilledButton(
             onPressed: () { Navigator.pop(context, true); },
+            style: const ButtonStyle(
+              elevation: WidgetStatePropertyAll(2),
+              shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)))),
+            ),
+            child: Text(
+              "Confirm",
+              style: TextStyle(
+                fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
+              )
+            ),
           ),
         ]
       ),
@@ -88,7 +102,7 @@ class _EventSettingsViewState extends State<EventSettingsView> {
           date: newEventDate
         ));
         final batch = widget.db.batch();
-        widget.db.collection("tickets").where("hidden", isEqualTo: false).get().then((res) {
+        widget.db.collection("tickets").where("active", isEqualTo: true).get().then((res) {
           for (final ticket in res.docs) {
             final ref = event.collection("attendees").doc(ticket.id);
             batch.set(ref, {"checked": false});
@@ -162,6 +176,29 @@ class EditEventHelper {
   }
 
   void editEvent(BuildContext context, Event event) {
+    Widget confirmButton = FilledButton(
+      style: const ButtonStyle(
+        elevation: WidgetStatePropertyAll(2),
+        shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)))),
+      ),
+      child: Text(
+          "Confirm",
+          style: TextStyle(
+              fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
+          )
+      ),
+      onPressed: () { Navigator.pop(context, "confirm"); },
+    );
+    Widget cancelButton = TextButton(
+      child: Text(
+          "Cancel",
+          style: TextStyle(
+              fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
+          )
+      ),
+      onPressed: () { Navigator.pop(context, "cancel"); },
+    );
+
     curEvent = event;
     Event original = curEvent.copy();
     dateController = TextEditingController(text: curEvent.getDateString());
@@ -204,7 +241,12 @@ class EditEventHelper {
           ),
           actions: (kDebugMode) ? [
             TextButton(
-              child: const Text("Delete"),
+              child: Text(
+                  "Delete",
+                  style: TextStyle(
+                      fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
+                  )
+              ),
               onPressed: () {
                 showDialog(
                   context: context,
@@ -218,11 +260,25 @@ class EditEventHelper {
                       ),
                       actions: [
                         TextButton(
-                          child: const Text("Cancel"),
+                          child: Text(
+                              "Cancel",
+                              style: TextStyle(
+                                  fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
+                              )
+                          ),
                           onPressed: () { Navigator.pop(context, false); },
                         ),
-                        TextButton(
-                          child: const Text("Confirm"),
+                        FilledButton(
+                          style: const ButtonStyle(
+                            elevation: WidgetStatePropertyAll(2),
+                            shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)))),
+                          ),
+                          child: Text(
+                              "Confirm",
+                              style: TextStyle(
+                                  fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
+                              )
+                          ),
                           onPressed: () { Navigator.pop(context, true); },
                         ),
                       ]
@@ -234,23 +290,11 @@ class EditEventHelper {
                 });
               },
             ),
-            TextButton(
-              child: const Text("Cancel"),
-              onPressed: () { Navigator.pop(context, "cancel"); },
-            ),
-            TextButton(
-              child: const Text("Confirm"),
-              onPressed: () { Navigator.pop(context, "confirm"); },
-            ),
+            cancelButton,
+            confirmButton,
           ] : [
-            TextButton(
-              child: const Text("Cancel"),
-              onPressed: () { Navigator.pop(context, "cancel"); },
-            ),
-            TextButton(
-              child: const Text("Confirm"),
-              onPressed: () { Navigator.pop(context, "confirm"); },
-            ),
+            cancelButton,
+            confirmButton,
           ]
       ),
     ).then((res){

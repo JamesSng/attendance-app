@@ -95,7 +95,7 @@ class _AttendanceViewState extends State<AttendanceListView> {
           id: ticket.id,
           name: ticket.get('name'),
           regular: ticket.get('regular'),
-          hidden: ticket.get('hidden'),
+          active: ticket.get('active'),
         );
       }
 
@@ -202,7 +202,12 @@ class _AttendanceViewState extends State<AttendanceListView> {
                       child: SizedBox(
                         width: 200,
                         child: CheckboxListTile(
-                          title: const Text("Regular"),
+                          title: Text(
+                              "Regulars",
+                              style: TextStyle(
+                                fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                              )
+                          ),
                           value: showRegular,
                           onChanged: (bool? value) {
                             value ??= false;
@@ -220,7 +225,12 @@ class _AttendanceViewState extends State<AttendanceListView> {
                         child: SizedBox(
                             width: 200,
                             child: CheckboxListTile(
-                                title: const Text("Others"),
+                                title: Text(
+                                  "Others",
+                                  style: TextStyle(
+                                    fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                                  )
+                                ),
                                 value: showNonRegular,
                                 onChanged: (bool? value) {
                                   value ??= false;
@@ -256,9 +266,15 @@ class _AttendanceViewState extends State<AttendanceListView> {
                       ),
                       title: Text(
                         showTickets[index].name,
+                        style: TextStyle(
+                          fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                        )
                       ),
                       subtitle: Text(
                         showTickets[index].regular ? "Regular" : "Others",
+                        style: TextStyle(
+                          fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
+                        )
                       )
                     ),
                   ),

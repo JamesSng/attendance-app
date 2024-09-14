@@ -90,13 +90,13 @@ class _EventsViewState extends State<EventsView> {
                       Text(
                         events[index].name,
                         style: TextStyle(
-                          fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
+                          fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
                         )
                       ),
                       Text(
                         events[index].getDateString(),
                         style: TextStyle(
-                          fontSize: Theme.of(context).textTheme.labelLarge?.fontSize,
+                          fontSize: Theme.of(context).textTheme.titleMedium?.fontSize,
                         )
                       ),
                     ]
@@ -118,25 +118,49 @@ class _EventsViewState extends State<EventsView> {
         children: ongoingEvents.isNotEmpty ? (
           upcomingEvents.isNotEmpty ? (
             [
-              Text('Ongoing Events', style: Theme.of(context).textTheme.headlineSmall),
+              Text(
+                'Ongoing Events',
+                style: TextStyle(
+                  fontSize: Theme.of(context).textTheme.headlineSmall?.fontSize,
+                )
+              ),
               getEventList(ongoingEvents),
-              Text('Upcoming Events', style: Theme.of(context).textTheme.headlineSmall),
+              Text(
+                  'Upcoming Events',
+                  style: TextStyle(
+                    fontSize: Theme.of(context).textTheme.headlineSmall?.fontSize,
+                  )
+              ),
               Expanded(child: getEventList(upcomingEvents)),
             ]
           ) : (
             [
-              Text('Ongoing Events', style: Theme.of(context).textTheme.headlineSmall),
+              Text(
+                  'Ongoing Events',
+                  style: TextStyle(
+                    fontSize: Theme.of(context).textTheme.headlineSmall?.fontSize,
+                  )
+              ),
               getEventList(ongoingEvents),
             ]
           )
         ) : (
           upcomingEvents.isNotEmpty ? (
             [
-              Text('Upcoming Events', style: Theme.of(context).textTheme.headlineSmall),
+              Text('Upcoming Events',
+                style: TextStyle(
+                  fontSize: Theme.of(context).textTheme.headlineSmall?.fontSize,
+                )
+              ),
               Expanded(child: getEventList(upcomingEvents)),
             ]
           ) : (
-            [Text('No Upcoming Events!', style: Theme.of(context).textTheme.headlineSmall)]
+            [Text(
+                'No Upcoming Events',
+                style: TextStyle(
+                  fontSize: Theme.of(context).textTheme.headlineSmall?.fontSize,
+                )
+            )]
           )
         ),
       )

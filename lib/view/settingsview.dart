@@ -37,7 +37,7 @@ class SettingsView extends StatelessWidget {
               child: Text(
                 text,
                 style: TextStyle(
-                  fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
+                  fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
                 ),
               ),
             ),
@@ -60,9 +60,15 @@ class SettingsView extends StatelessWidget {
         FilledButton(
           onPressed: () { logout(context); },
           style: const ButtonStyle(
+            elevation: WidgetStatePropertyAll(2),
             shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)))),
           ),
-          child: const Text("Logout"),
+          child: Text(
+              "Logout",
+              style: TextStyle(
+                  fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
+              )
+          ),
         ),
       ]
     );

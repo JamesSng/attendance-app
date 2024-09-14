@@ -16,12 +16,12 @@ class TicketSettingsView extends StatefulWidget {
 
 class _TicketSettingsViewState extends State<TicketSettingsView> {
   late String newTicketName;
-  late bool newRegular, newHidden;
+  late bool newRegular, newActive;
 
   void createTicket(BuildContext context) {
     newTicketName = "";
     newRegular = true;
-    newHidden = false;
+    newActive = true;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -51,11 +51,11 @@ class _TicketSettingsViewState extends State<TicketSettingsView> {
                   }
                 ),
                 CheckboxListTile(
-                  title: const Text("Hidden"),
-                  value: newHidden,
+                  title: const Text("Active"),
+                  value: newActive,
                   onChanged: (value) {
                     setState(() {
-                      newHidden = value!;
+                      newActive = value!;
                     });
                   }
                 )
@@ -65,11 +65,25 @@ class _TicketSettingsViewState extends State<TicketSettingsView> {
         ),
         actions: [
           TextButton(
-            child: const Text("Cancel"),
+            child: Text(
+                "Cancel",
+                style: TextStyle(
+                    fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
+                )
+            ),
             onPressed: () { Navigator.pop(context, false); },
           ),
-          TextButton(
-            child: const Text("Confirm"),
+          FilledButton(
+            style: const ButtonStyle(
+              elevation: WidgetStatePropertyAll(2),
+              shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)))),
+            ),
+            child: Text(
+                "Confirm",
+                style: TextStyle(
+                    fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
+                )
+            ),
             onPressed: () { Navigator.pop(context, true); },
           ),
         ]
@@ -80,13 +94,13 @@ class _TicketSettingsViewState extends State<TicketSettingsView> {
         ticket.set({
           "name": newTicketName,
           "regular": newRegular,
-          "hidden": newHidden,
+          "active": newActive,
         });
         Logger.createTicket(Ticket(
           id: "",
           name: newTicketName,
           regular: newRegular,
-          hidden: newHidden)
+          active: newActive)
         );
       }
     });
@@ -124,6 +138,29 @@ class _TicketSettingsViewState extends State<TicketSettingsView> {
 class EditTicketHelper {
   final db = FirebaseFirestore.instance;
   void editTicket(BuildContext context, Ticket ticket) {
+    Widget confirmButton = FilledButton(
+      style: const ButtonStyle(
+        elevation: WidgetStatePropertyAll(2),
+        shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)))),
+      ),
+      child: Text(
+          "Confirm",
+          style: TextStyle(
+              fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
+          )
+      ),
+      onPressed: () { Navigator.pop(context, "confirm"); },
+    );
+    Widget cancelButton = TextButton(
+      child: Text(
+          "Cancel",
+          style: TextStyle(
+              fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
+          )
+      ),
+      onPressed: () { Navigator.pop(context, "cancel"); },
+    );
+
     Ticket original = ticket.copy();
     showDialog(
       context: context,
@@ -158,11 +195,11 @@ class EditTicketHelper {
                         }
                       ),
                       CheckboxListTile(
-                        title: const Text("Hidden"),
-                        value: ticket.hidden,
+                        title: const Text("Active"),
+                        value: ticket.active,
                         onChanged: (value) {
                           setState(() {
-                            ticket.hidden = value!;
+                            ticket.active = value!;
                           });
                         }
                       )
@@ -175,7 +212,12 @@ class EditTicketHelper {
         ),
         actions: (kDebugMode) ? [
           TextButton(
-            child: const Text("Delete"),
+            child: Text(
+                "Delete",
+                style: TextStyle(
+                    fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
+                )
+            ),
             onPressed: () {
               showDialog(
                 context: context,
@@ -189,11 +231,25 @@ class EditTicketHelper {
                     ),
                     actions: [
                       TextButton(
-                        child: const Text("Cancel"),
+                        child: Text(
+                            "Cancel",
+                            style: TextStyle(
+                                fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
+                            )
+                        ),
                         onPressed: () { Navigator.pop(context, false); },
                       ),
-                      TextButton(
-                        child: const Text("Confirm"),
+                      FilledButton(
+                        style: const ButtonStyle(
+                          elevation: WidgetStatePropertyAll(2),
+                          shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)))),
+                        ),
+                        child: Text(
+                            "Confirm",
+                            style: TextStyle(
+                                fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
+                            )
+                        ),
                         onPressed: () { Navigator.pop(context, true); },
                       ),
                     ]
@@ -205,32 +261,20 @@ class EditTicketHelper {
               });
             },
           ),
-          TextButton(
-            child: const Text("Cancel"),
-            onPressed: () { Navigator.pop(context, "cancel"); },
-          ),
-          TextButton(
-            child: const Text("Confirm"),
-            onPressed: () { Navigator.pop(context, "confirm"); },
-          ),
+          cancelButton,
+          confirmButton
         ] : [
-          TextButton(
-            child: const Text("Cancel"),
-            onPressed: () { Navigator.pop(context, "cancel"); },
-          ),
-          TextButton(
-            child: const Text("Confirm"),
-            onPressed: () { Navigator.pop(context, "confirm"); },
-          ),
+          cancelButton,
+          confirmButton,
         ]
       ),
     ).then((res){
       if (res == "confirm") {
-        if (original.name != ticket.name || original.regular != ticket.regular || original.hidden != ticket.hidden) {
+        if (original.name != ticket.name || original.regular != ticket.regular || original.active != ticket.active) {
           db.collection("tickets").doc(ticket.id).set({
             "name": ticket.name,
             "regular": ticket.regular,
-            "hidden": ticket.hidden,
+            "active": ticket.active,
           });
           Logger.editTicket(original, ticket);
         }

@@ -5,10 +5,10 @@ import 'package:attendance_app/view/settingsview.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,6 +30,7 @@ class AttendanceApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurpleAccent),
         useMaterial3: true,
+        textTheme: GoogleFonts.latoTextTheme()
       ),
       home: HomePageView(),
     );
@@ -159,7 +160,16 @@ class _HomePageViewState extends State<HomePageView> {
               ),
               FilledButton(
                 onPressed: () { signInWithGoogle(context); },
-                child: const Text("Sign In"),
+                style: const ButtonStyle(
+                  elevation: WidgetStatePropertyAll(2),
+                  shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)))),
+                ),
+                child: Text(
+                  "Login",
+                  style: TextStyle(
+                      fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
+                  )
+                ),
               ),
             ]
           ),

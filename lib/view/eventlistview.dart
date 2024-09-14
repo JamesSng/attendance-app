@@ -78,13 +78,13 @@ class _EventListViewState extends State<EventListView> {
                                       Text(
                                           events[index].name,
                                           style: TextStyle(
-                                            fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
+                                            fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
                                           )
                                       ),
                                       Text(
                                           events[index].getDateString(),
                                           style: TextStyle(
-                                            fontSize: Theme.of(context).textTheme.labelLarge?.fontSize,
+                                            fontSize: Theme.of(context).textTheme.titleMedium?.fontSize,
                                           )
                                       ),
                                     ]
