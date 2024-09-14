@@ -30,7 +30,7 @@ class HistoryView extends StatelessWidget {
               child: Text(
                 text,
                 style: TextStyle(
-                  fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                  fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
                 ),
               ),
             ),

@@ -243,7 +243,7 @@ class _TicketEventViewState extends State<TicketEventView> {
                       title: Text(
                         events[index].name,
                         style: TextStyle(
-                          fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                          fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
                         )
                       ),
                       subtitle: Text(

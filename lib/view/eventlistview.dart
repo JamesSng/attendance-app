@@ -78,7 +78,7 @@ class _EventListViewState extends State<EventListView> {
                                       Text(
                                           events[index].name,
                                           style: TextStyle(
-                                            fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                                            fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
                                           )
                                       ),
                                       Text(

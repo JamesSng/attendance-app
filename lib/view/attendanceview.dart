@@ -205,7 +205,7 @@ class _AttendanceViewState extends State<AttendanceListView> {
                           title: Text(
                               "Regulars",
                               style: TextStyle(
-                                fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                                fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
                               )
                           ),
                           value: showRegular,
@@ -228,7 +228,7 @@ class _AttendanceViewState extends State<AttendanceListView> {
                                 title: Text(
                                   "Others",
                                   style: TextStyle(
-                                    fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                                    fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
                                   )
                                 ),
                                 value: showNonRegular,
@@ -267,7 +267,7 @@ class _AttendanceViewState extends State<AttendanceListView> {
                       title: Text(
                         showTickets[index].name,
                         style: TextStyle(
-                          fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                          fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
                         )
                       ),
                       subtitle: Text(

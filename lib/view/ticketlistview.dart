@@ -111,7 +111,7 @@ class _TicketListViewState extends State<TicketListView> {
                                       title: Text(
                                         "Regular",
                                         style: TextStyle(
-                                          fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                                          fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
                                         )
                                       ),
                                       value: showRegular,
@@ -134,7 +134,7 @@ class _TicketListViewState extends State<TicketListView> {
                                       title: Text(
                                           "Others",
                                           style: TextStyle(
-                                            fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                                            fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
                                           )
                                       ),
                                       value: showNonRegular,
@@ -162,7 +162,7 @@ class _TicketListViewState extends State<TicketListView> {
                                       title: Text(
                                           "Active",
                                           style: TextStyle(
-                                            fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                                            fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
                                           )
                                       ),
                                       value: showActive,
@@ -185,7 +185,7 @@ class _TicketListViewState extends State<TicketListView> {
                                       title: Text(
                                           "Inactive",
                                           style: TextStyle(
-                                            fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                                            fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
                                           )
                                       ),
                                       value: showInactive,
@@ -217,12 +217,12 @@ class _TicketListViewState extends State<TicketListView> {
                             "${showTickets[index].name} (inactive)",
                             style: TextStyle(
                               fontStyle: FontStyle.italic,
-                              fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                              fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
                             ),
                           ) : Text(
                             showTickets[index].name,
                             style: TextStyle(
-                              fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
+                              fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
                             )
                           ),
                           subtitle: Text(
