@@ -29,15 +29,17 @@ class _EventsViewState extends State<EventsView> {
         DateTime.now().day
     );
     widget.db.collection("events")
-    .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(today))
-    .orderBy('date').orderBy('name').snapshots().listen((res) {
+    .where('endTime', isGreaterThanOrEqualTo: Timestamp.fromDate(today))
+    .orderBy('startTime').snapshots().listen((res) {
       List<Event> newOngoingEvents = [], newUpcomingEvents = [];
       for (var event in res.docs) {
         Event e = Event(
           id: event.id,
           name: event.get('name'),
-          date: event.get('date').toDate());
-        if (e.date == today) {
+          startTime: event.get('startTime').toDate(),
+          endTime: event.get('endTime').toDate()
+        );
+        if (e.isOngoing()) {
           newOngoingEvents.add(e);
         } else {
           newUpcomingEvents.add(e);
@@ -91,12 +93,13 @@ class _EventsViewState extends State<EventsView> {
                         events[index].name,
                         style: TextStyle(
                           fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
+                          fontWeight: FontWeight.bold,
                         )
                       ),
                       Text(
-                        events[index].getDateString(),
+                        events[index].getTimeString(),
                         style: TextStyle(
-                          fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
+                          fontSize: Theme.of(context).textTheme.bodyMedium?.fontSize,
                         )
                       ),
                     ]
@@ -124,38 +127,40 @@ class _EventsViewState extends State<EventsView> {
           fontSize: Theme.of(context).textTheme.headlineSmall?.fontSize,
         )
     );
-    return Container(
-      margin: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-      child: Column(
-        children: ongoingEvents.isNotEmpty ? (
-          upcomingEvents.isNotEmpty ? (
-            [
-              ongoingEventsLabel,
-              getEventList(ongoingEvents),
-              upcomingEventsLabel,
-              Expanded(child: getEventList(upcomingEvents)),
-            ]
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+        child: Column(
+          children: ongoingEvents.isNotEmpty ? (
+            upcomingEvents.isNotEmpty ? (
+              [
+                ongoingEventsLabel,
+                getEventList(ongoingEvents),
+                upcomingEventsLabel,
+                Expanded(child: getEventList(upcomingEvents)),
+              ]
+            ) : (
+              [
+                ongoingEventsLabel,
+                getEventList(ongoingEvents),
+              ]
+            )
           ) : (
-            [
-              ongoingEventsLabel,
-              getEventList(ongoingEvents),
-            ]
-          )
-        ) : (
-          upcomingEvents.isNotEmpty ? (
-            [
-              upcomingEventsLabel,
-              Expanded(child: getEventList(upcomingEvents)),
-            ]
-          ) : (
-            [Text(
-                'No Upcoming Events',
-                style: TextStyle(
-                  fontSize: Theme.of(context).textTheme.headlineSmall?.fontSize,
-                )
-            )]
-          )
-        ),
+            upcomingEvents.isNotEmpty ? (
+              [
+                upcomingEventsLabel,
+                Expanded(child: getEventList(upcomingEvents)),
+              ]
+            ) : (
+              [Text(
+                  'No Upcoming Events',
+                  style: TextStyle(
+                    fontSize: Theme.of(context).textTheme.headlineSmall?.fontSize,
+                  )
+              )]
+            )
+          ),
+        )
       )
     );
   }

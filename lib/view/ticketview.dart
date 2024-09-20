@@ -95,8 +95,8 @@ class _TicketEventViewState extends State<TicketEventView> {
 
   loadData() {
     widget.db.collection("events")
-    .where("date", isGreaterThanOrEqualTo: Timestamp.fromDate(lowDate), isLessThanOrEqualTo: Timestamp.fromDate(highDate))
-    .orderBy("date", descending: true)
+    .where("startTime", isGreaterThanOrEqualTo: Timestamp.fromDate(lowDate), isLessThanOrEqualTo: Timestamp.fromDate(highDate))
+    .orderBy("startTime", descending: true)
     .get().then((res) {
       List<Event> newEvents = [];
       checked = List.generate(res.docs.length, (a) => false);
@@ -107,7 +107,8 @@ class _TicketEventViewState extends State<TicketEventView> {
         newEvents.add(Event(
           id: event.id,
           name: event.get("name"),
-          date: event.get("date").toDate()
+          startTime: event.get('startTime').toDate(),
+          endTime: event.get('endTime').toDate()
         ));
         event.reference.collection("attendees").doc(widget.ticket.id).get().then((res) {
           setState(() {
@@ -247,9 +248,9 @@ class _TicketEventViewState extends State<TicketEventView> {
                         )
                       ),
                       subtitle: Text(
-                        events[index].getDateString(),
+                        events[index].getTimeString(),
                         style: TextStyle(
-                          fontSize: Theme.of(context).textTheme.titleMedium?.fontSize,
+                          fontSize: Theme.of(context).textTheme.bodyMedium?.fontSize,
                         )
                       ),
                       leading: Checkbox(value: checked[index], onChanged: (v) {}),

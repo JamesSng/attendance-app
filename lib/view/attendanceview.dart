@@ -22,11 +22,31 @@ class AttendanceView extends StatelessWidget {
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(
-          "${event.name} (${event.getDateString()})",
+          event.name,
           style: Theme.of(context).textTheme.headlineSmall,
         ),
       ),
-      body: AttendanceListView(eventId: event.id, reviewMode: reviewMode),
+      body: Container(
+        padding: const EdgeInsets.only(top: 10),
+        child: Column(
+          children: [
+            Text(
+              event.isOngoing() ? "Ongoing" : "Upcoming",
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            Text(
+              event.getTimeString(),
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const Divider(
+              height: 20,
+              thickness: 0.5,
+              color: Colors.black,
+            ),
+            Expanded(child: AttendanceListView(eventId: event.id, reviewMode: reviewMode)),
+          ]
+        ),
+      )
     );
   }
 }
@@ -166,7 +186,7 @@ class _AttendanceViewState extends State<AttendanceListView> {
 
   Widget renderData(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+      margin: const EdgeInsets.fromLTRB(10, 0, 10, 10),
       child: Column(
         children: [
           Text(

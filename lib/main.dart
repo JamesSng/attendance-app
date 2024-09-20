@@ -30,7 +30,7 @@ class AttendanceApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurpleAccent),
         useMaterial3: true,
-        textTheme: GoogleFonts.latoTextTheme()
+        textTheme: GoogleFonts.latoTextTheme(),
       ),
       home: HomePageView(),
     );

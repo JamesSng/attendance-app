@@ -23,13 +23,15 @@ class _EventListViewState extends State<EventListView> {
   List<Event> events = [];
 
   loadData() {
-    widget.db.collection("events").orderBy('date', descending: true).orderBy('name').snapshots().listen((res) {
+    widget.db.collection("events").orderBy('startTime', descending: true).snapshots().listen((res) {
       List<Event> newEvents = [];
       for (var event in res.docs) {
         newEvents.add(Event(
             id: event.id,
             name: event.get('name'),
-            date: event.get('date').toDate()));
+            startTime: event.get('startTime').toDate(),
+            endTime: event.get('endTime').toDate()
+        ));
       }
       setState(() {
         events = newEvents;
@@ -79,12 +81,13 @@ class _EventListViewState extends State<EventListView> {
                                           events[index].name,
                                           style: TextStyle(
                                             fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
+                                            fontWeight: FontWeight.bold
                                           )
                                       ),
                                       Text(
-                                          events[index].getDateString(),
+                                          events[index].getTimeString(),
                                           style: TextStyle(
-                                            fontSize: Theme.of(context).textTheme.titleMedium?.fontSize,
+                                            fontSize: Theme.of(context).textTheme.bodyMedium?.fontSize,
                                           )
                                       ),
                                     ]

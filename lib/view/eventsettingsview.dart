@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../model/event.dart';
 import '../util/logger.dart';
+import '../util/timepicker.dart';
 import 'eventlistview.dart';
 
 class EventSettingsView extends StatefulWidget {
@@ -16,18 +17,18 @@ class EventSettingsView extends StatefulWidget {
 
 class _EventSettingsViewState extends State<EventSettingsView> {
   late String newEventName;
-  late DateTime newEventDate;
-  late TextEditingController dateController;
+  late DateTime newEventStartTime, newEventEndTime;
+  late TextEditingController startTimeController, endTimeController;
 
-  String getDateString(DateTime date) {
-    return DateFormat("dd/MM/yyyy").format(date);
+  String getTimeString(DateTime date) {
+    return DateFormat.yMd().add_Hm().format(date);
   }
 
   void createEvent(BuildContext context) {
     newEventName = "";
-    DateTime now = DateTime.now();
-    newEventDate = DateTime(now.year, now.month, now.day);
-    dateController = TextEditingController(text: getDateString(newEventDate));
+    newEventStartTime = newEventEndTime = DateTime.now();
+    startTimeController = TextEditingController(text: getTimeString(newEventStartTime));
+    endTimeController = TextEditingController(text: getTimeString(newEventEndTime));
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -52,13 +53,27 @@ class _EventSettingsViewState extends State<EventSettingsView> {
               padding: const EdgeInsets.only(left: 10, right: 10),
               child: TextField(
                 readOnly: true,
-                controller: dateController,
+                controller: startTimeController,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
-                  labelText: 'Date',
+                  labelText: 'Start Time',
                 ),
                 onTap: () {
-                  _selectDate(context);
+                  _selectStartTime(context);
+                },
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.only(top: 10, left: 10, right: 10),
+              child: TextField(
+                readOnly: true,
+                controller: startTimeController,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'End Time',
+                ),
+                onTap: () {
+                  _selectEndTime(context);
                 },
               ),
             ),
@@ -94,12 +109,14 @@ class _EventSettingsViewState extends State<EventSettingsView> {
         var event = widget.db.collection("events").doc();
         event.set({
           "name": newEventName,
-          "date": Timestamp.fromDate(newEventDate),
+          "startTime": Timestamp.fromDate(newEventStartTime),
+          "endTime": Timestamp.fromDate(newEventEndTime),
         });
         Logger.createEvent(Event(
           id: "",
           name: newEventName,
-          date: newEventDate
+          startTime: newEventStartTime,
+          endTime: newEventEndTime,
         ));
         final batch = widget.db.batch();
         widget.db.collection("tickets").where("active", isEqualTo: true).get().then((res) {
@@ -113,18 +130,14 @@ class _EventSettingsViewState extends State<EventSettingsView> {
     });
   }
 
-  _selectDate(BuildContext context) async {
-    DateTime? selectedDate = await showDatePicker(
-      context: context,
-      initialDate: newEventDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-    );
+  _selectStartTime(BuildContext context) async {
+    newEventStartTime = await selectTime(context, newEventStartTime);
+    startTimeController.text = getTimeString(newEventStartTime);
+  }
 
-    if (selectedDate != null) {
-      newEventDate = selectedDate;
-      dateController.text = getDateString(newEventDate);
-    }
+  _selectEndTime(BuildContext context) async {
+    newEventEndTime = await selectTime(context, newEventEndTime);
+    endTimeController.text = getTimeString(newEventEndTime);
   }
 
   @override
@@ -158,21 +171,17 @@ class _EventSettingsViewState extends State<EventSettingsView> {
 
 class EditEventHelper {
   final db = FirebaseFirestore.instance;
-  late TextEditingController dateController;
+  late TextEditingController startTimeController, endTimeController;
   late Event curEvent;
 
-  _selectDate(BuildContext context) async {
-    DateTime? selectedDate = await showDatePicker(
-      context: context,
-      initialDate: curEvent.date,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-    );
+  _selectStartTime(BuildContext context) async {
+    curEvent.startTime = await selectTime(context, curEvent.startTime);
+    startTimeController.text = curEvent.getStartTimeString();
+  }
 
-    if (selectedDate != null) {
-      curEvent.date = selectedDate;
-      dateController.text = curEvent.getDateString();
-    }
+  _selectEndTime(BuildContext context) async {
+    curEvent.endTime = await selectTime(context, curEvent.endTime);
+    endTimeController.text = curEvent.getEndTimeString();
   }
 
   void editEvent(BuildContext context, Event event) {
@@ -201,7 +210,8 @@ class EditEventHelper {
 
     curEvent = event;
     Event original = curEvent.copy();
-    dateController = TextEditingController(text: curEvent.getDateString());
+    startTimeController = TextEditingController(text: curEvent.getStartTimeString());
+    endTimeController = TextEditingController(text: curEvent.getEndTimeString());
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -225,15 +235,29 @@ class EditEventHelper {
                     padding: const EdgeInsets.only(top: 10),
                     child: TextField(
                       readOnly: true,
-                      controller: dateController,
+                      controller: startTimeController,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
-                        labelText: 'Date',
+                        labelText: 'Start Time',
                       ),
                       onTap: () {
-                        _selectDate(context);
+                        _selectStartTime(context);
                       },
                     )
+                  ),
+                  Container(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: TextField(
+                        readOnly: true,
+                        controller: endTimeController,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: 'End Time',
+                        ),
+                        onTap: () {
+                          _selectEndTime(context);
+                        },
+                      )
                   ),
                 ]
               );
@@ -299,11 +323,12 @@ class EditEventHelper {
       ),
     ).then((res){
       if (res == "confirm") {
-        if (original.name != curEvent.name || original.date != curEvent.date) {
+        if (original.name != curEvent.name || original.startTime != curEvent.startTime || original.endTime != curEvent.endTime) {
           db.collection("events").doc(curEvent.id).set(
               {
                 "name": curEvent.name,
-                "date": Timestamp.fromDate(curEvent.date),
+                "startTime": Timestamp.fromDate(curEvent.startTime),
+                "endTime": Timestamp.fromDate(curEvent.endTime),
               }
           );
           Logger.editEvent(original, curEvent);
