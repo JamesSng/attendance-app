@@ -23,13 +23,8 @@ class _EventsViewState extends State<EventsView> {
   }
 
   loadData() {
-    final today = DateTime(
-        DateTime.now().year,
-        DateTime.now().month,
-        DateTime.now().day
-    );
     widget.db.collection("events")
-    .where('endTime', isGreaterThanOrEqualTo: Timestamp.fromDate(today))
+    .where('endTime', isGreaterThanOrEqualTo: DateTime.now())
     .orderBy('startTime').snapshots().listen((res) {
       List<Event> newOngoingEvents = [], newUpcomingEvents = [];
       for (var event in res.docs) {
