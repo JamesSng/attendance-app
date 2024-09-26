@@ -21,7 +21,7 @@ class _EventSettingsViewState extends State<EventSettingsView> {
   late TextEditingController startTimeController, endTimeController;
 
   String getTimeString(DateTime date) {
-    return DateFormat.yMd().add_Hm().format(date);
+    return DateFormat("dd/MM/yyyy HH:mm").format(date);
   }
 
   void createEvent(BuildContext context) {

@@ -31,7 +31,7 @@ class AttendanceView extends StatelessWidget {
         child: Column(
           children: [
             Text(
-              event.isOngoing() ? "Ongoing" : "Upcoming",
+              event.isOngoing() ? "Ongoing" : (event.isUpcoming() ? "Upcoming" : "Ended"),
               style: Theme.of(context).textTheme.titleLarge,
             ),
             Text(

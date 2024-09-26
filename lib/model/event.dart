@@ -7,7 +7,7 @@ class Event {
 
   String id, name;
   DateTime startTime, endTime;
-  DateFormat dateFormat = DateFormat.yMd().add_Hm();
+  DateFormat dateFormat = DateFormat("dd/MM/yyyy HH:mm");
 
   String getStartTimeString() {
     return dateFormat.format(startTime);
@@ -32,5 +32,9 @@ class Event {
 
   bool isOngoing() {
     return startTime.isBefore(DateTime.now()) && endTime.isAfter(DateTime.now());
+  }
+
+  bool isUpcoming() {
+    return startTime.isAfter(DateTime.now());
   }
 }
