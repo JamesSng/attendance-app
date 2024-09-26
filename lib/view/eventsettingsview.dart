@@ -67,7 +67,7 @@ class _EventSettingsViewState extends State<EventSettingsView> {
               padding: const EdgeInsets.only(top: 10, left: 10, right: 10),
               child: TextField(
                 readOnly: true,
-                controller: startTimeController,
+                controller: endTimeController,
                 decoration: const InputDecoration(
                   border: OutlineInputBorder(),
                   labelText: 'End Time',
