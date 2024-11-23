@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:month_year_picker/month_year_picker.dart';
+import 'package:month_picker_dialog/month_picker_dialog.dart';
 
 import '../model/event.dart';
 
@@ -91,7 +91,7 @@ class _EventListViewState extends State<EventListView> {
                     child: Text(
                       getMonthString(selectedMonth),
                       style: TextStyle(
-                        fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
+                        fontSize: Theme.of(context).textTheme.titleLarge?.fontSize,
                       )
                     )
                   )
@@ -162,11 +162,9 @@ class _EventListViewState extends State<EventListView> {
   }
 
   _selectMonth(BuildContext context) async {
-    DateTime? newMonth = await showMonthYearPicker(
+    DateTime? newMonth = await showMonthPicker(
       context: context,
       initialDate: selectedMonth,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2050),
     );
     if (newMonth != null && selectedMonth != newMonth) {
       setState(() {
