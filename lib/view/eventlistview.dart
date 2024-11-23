@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:month_year_picker/month_year_picker.dart';
+
 import '../model/event.dart';
 
 class EventListView extends StatefulWidget {
@@ -12,6 +15,9 @@ class EventListView extends StatefulWidget {
 }
 
 class _EventListViewState extends State<EventListView> {
+  late DateTime selectedMonth;
+  bool init = false;
+
   @override
   void setState(fn) {
     if(mounted) {
@@ -23,14 +29,18 @@ class _EventListViewState extends State<EventListView> {
   List<Event> events = [];
 
   loadData() {
-    widget.db.collection("events").orderBy('startTime', descending: true).snapshots().listen((res) {
+    DateTime nextMonth = DateTime(selectedMonth.year, selectedMonth.month + 1);
+    widget.db.collection("events")
+    .where('startTime', isGreaterThanOrEqualTo: Timestamp.fromDate(selectedMonth), isLessThan: Timestamp.fromDate(nextMonth))
+    .orderBy('startTime').snapshots().listen((res) {
+      print(selectedMonth);
       List<Event> newEvents = [];
       for (var event in res.docs) {
         newEvents.add(Event(
-            id: event.id,
-            name: event.get('name'),
-            startTime: event.get('startTime').toDate(),
-            endTime: event.get('endTime').toDate()
+          id: event.id,
+          name: event.get('name'),
+          startTime: event.get('startTime').toDate(),
+          endTime: event.get('endTime').toDate()
         ));
       }
       setState(() {
@@ -42,6 +52,11 @@ class _EventListViewState extends State<EventListView> {
 
   @override
   Widget build(BuildContext context) {
+    if (!init) {
+      init = true;
+      DateTime now = DateTime.now();
+      selectedMonth = DateTime(now.year, now.month);
+    }
     return loading ? renderLoad() : renderData();
   }
 
@@ -57,6 +72,41 @@ class _EventListViewState extends State<EventListView> {
         margin: const EdgeInsets.fromLTRB(10, 10, 10, 10),
         child: Column(
           children: [
+            Row(
+              children: [
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      selectedMonth = DateTime(selectedMonth.year, selectedMonth.month - 1);
+                      loading = true;
+                    });
+                  },
+                  child: const Icon(Icons.keyboard_arrow_left),
+                ),
+                Expanded(
+                  child: TextButton(
+                    onPressed: () {
+                      _selectMonth(context);
+                    },
+                    child: Text(
+                      getMonthString(selectedMonth),
+                      style: TextStyle(
+                        fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
+                      )
+                    )
+                  )
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      selectedMonth = DateTime(selectedMonth.year, selectedMonth.month + 1);
+                      loading = true;
+                    });
+                  },
+                  child: const Icon(Icons.keyboard_arrow_right),
+                )
+              ]
+            ),
             Expanded(
               child: ListView.builder(
                 itemCount: events.length,
@@ -104,5 +154,25 @@ class _EventListViewState extends State<EventListView> {
           ],
         )
     );
+  }
+
+  String getMonthString(DateTime selectedMonth) {
+    DateFormat dateFormat = DateFormat("MMMM yyyy");
+    return dateFormat.format(selectedMonth);
+  }
+
+  _selectMonth(BuildContext context) async {
+    DateTime? newMonth = await showMonthYearPicker(
+      context: context,
+      initialDate: selectedMonth,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2050),
+    );
+    if (newMonth != null && selectedMonth != newMonth) {
+      setState(() {
+        selectedMonth = newMonth;
+        loading = true;
+      });
+    }
   }
 }

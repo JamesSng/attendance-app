@@ -9,6 +9,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:month_year_picker/month_year_picker.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +35,13 @@ class AttendanceApp extends StatelessWidget {
         textTheme: GoogleFonts.latoTextTheme(),
       ),
       home: HomePageView(),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        MonthYearPickerLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en'),
+      ],
     );
   }
 }

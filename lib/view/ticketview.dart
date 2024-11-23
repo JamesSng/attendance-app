@@ -42,6 +42,10 @@ class TicketEventView extends StatefulWidget {
     return dateFormat.format(date);
   }
 
+  String getDateRangeString(DateTimeRange range) {
+    return "${getDateString(range.start)} to ${getDateString(range.end)}";
+  }
+
   @override
   State<TicketEventView> createState() => _TicketEventViewState();
 }
@@ -58,44 +62,28 @@ class _TicketEventViewState extends State<TicketEventView> {
   int loadCount = 0;
   List<Event> events = [];
   List<bool?> checked = [];
-  late DateTime lowDate, highDate;
-  late TextEditingController lowDateController, highDateController;
+  late DateTimeRange dateTimeRange;
+  late TextEditingController dateRangeController;
 
-  _selectLowDate(BuildContext context) async {
-    DateTime? selectedDate = await showDatePicker(
+  _selectDateRange(BuildContext context) async {
+    DateTimeRange? newRange = await showDateRangePicker(
       context: context,
-      initialDate: lowDate,
+      initialDateRange: dateTimeRange,
       firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
+      lastDate: DateTime(2050),
     );
 
-    if (selectedDate != null && selectedDate != lowDate) {
+    if (newRange != null && newRange != dateTimeRange) {
       setState(() {
         loading = true;
-        lowDate = selectedDate;
-      });
-    }
-  }
-
-  _selectHighDate(BuildContext context) async {
-    DateTime? selectedDate = await showDatePicker(
-      context: context,
-      initialDate: highDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-    );
-
-    if (selectedDate != null && selectedDate != highDate) {
-      setState(() {
-        loading = true;
-        highDate = selectedDate;
+        dateTimeRange = newRange;
       });
     }
   }
 
   loadData() {
     widget.db.collection("events")
-    .where("startTime", isGreaterThanOrEqualTo: Timestamp.fromDate(lowDate), isLessThanOrEqualTo: Timestamp.fromDate(highDate))
+    .where("startTime", isGreaterThanOrEqualTo: Timestamp.fromDate(dateTimeRange.start), isLessThanOrEqualTo: Timestamp.fromDate(dateTimeRange.end))
     .orderBy("startTime", descending: true)
     .get().then((res) {
       List<Event> newEvents = [];
@@ -150,12 +138,12 @@ class _TicketEventViewState extends State<TicketEventView> {
     if (!init) {
       init = true;
       DateTime now = DateTime.now();
-      lowDate = DateTime(now.year, now.month - 1, now.day); // this works!
-      highDate = DateTime(now.year, now.month, now.day);
+      DateTime lowDate = DateTime(now.year, now.month - 1, now.day); // this works!
+      DateTime highDate = DateTime(now.year, now.month, now.day);
+      dateTimeRange = DateTimeRange(start: lowDate, end: highDate);
     }
 
-    lowDateController = TextEditingController(text: widget.getDateString(lowDate));
-    highDateController = TextEditingController(text: widget.getDateString(highDate));
+    dateRangeController = TextEditingController(text: widget.getDateRangeString(dateTimeRange));
 
     return loading ? renderLoad() : (loadCount != events.length ? renderHalf() : renderData());
   }
@@ -185,51 +173,16 @@ class _TicketEventViewState extends State<TicketEventView> {
                 style: Theme.of(context).textTheme.headlineSmall
             ),
           ),
-          Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width / 2 * 0.9,
-                  ),
-                  child: SizedBox(
-                      width: 200,
-                      child: TextField(
-                        readOnly: true,
-                        controller: lowDateController,
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          labelText: 'From',
-                        ),
-                        onTap: () {
-                          _selectLowDate(context);
-                        },
-                      )
-                  )
-                ),
-                ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width / 2 * 0.9,
-                    ),
-                    child: SizedBox(
-                        width: 200,
-                        child: TextField(
-                          readOnly: true,
-                          controller: highDateController,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            labelText: 'To',
-                          ),
-                          onTap: () {
-                            _selectHighDate(context);
-                          },
-                        )
-                    )
-                ),
-              ]
+          TextField(
+            readOnly: true,
+            controller: dateRangeController,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              labelText: 'Range',
             ),
+            onTap: () {
+              _selectDateRange(context);
+            },
           ),
           Expanded(
             child: ListView.builder(
