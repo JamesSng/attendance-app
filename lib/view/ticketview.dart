@@ -4,6 +4,10 @@ import 'package:intl/intl.dart';
 
 import '../model/event.dart';
 import '../model/ticket.dart';
+import '../util/time_format.dart';
+import 'widgets/app_scaffold.dart';
+import 'widgets/empty_state.dart';
+import 'widgets/status_widgets.dart';
 
 class TicketView extends StatelessWidget {
   TicketView({super.key, required this.ticket});
@@ -12,20 +16,10 @@ class TicketView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return  Scaffold(
-      appBar: AppBar(
-      leading: TextButton(
-        onPressed: () {
-          Navigator.pop(context);
-        },
-        child: const Icon(Icons.arrow_back),
-      ),
-      backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      title: Text(
-        ticket.name,
-        style: Theme.of(context).textTheme.headlineSmall,
-        ),
-      ),
+    return AppScaffold(
+      title: ticket.name,
+      subtitle: ticket.regular ? 'Regular ticket' : 'Other ticket',
+      padded: false,
       body: TicketEventView(ticket: ticket),
     );
   }
@@ -36,26 +30,14 @@ class TicketEventView extends StatefulWidget {
   final db = FirebaseFirestore.instance;
   final Ticket ticket;
 
-  final DateFormat dateFormat = DateFormat("dd/MM/yyyy");
-
-  String getDateString(DateTime date) {
-    return dateFormat.format(date);
-  }
-
-  String getDateRangeString(DateTimeRange range) {
-    return "${getDateString(range.start)} to ${getDateString(range.end)}";
-  }
-
   @override
   State<TicketEventView> createState() => _TicketEventViewState();
 }
 
 class _TicketEventViewState extends State<TicketEventView> {
   @override
-  void setState(fn) {
-    if(mounted) {
-      super.setState(fn);
-    }
+  void setState(VoidCallback fn) {
+    if (mounted) super.setState(fn);
   }
 
   bool init = false, loading = true;
@@ -65,8 +47,8 @@ class _TicketEventViewState extends State<TicketEventView> {
   late DateTimeRange dateTimeRange;
   late TextEditingController dateRangeController;
 
-  _selectDateRange(BuildContext context) async {
-    DateTimeRange? newRange = await showDateRangePicker(
+  Future<void> _selectDateRange(BuildContext context) async {
+    final newRange = await showDateRangePicker(
       context: context,
       initialDateRange: dateTimeRange,
       firstDate: DateTime(2020),
@@ -78,48 +60,52 @@ class _TicketEventViewState extends State<TicketEventView> {
         loading = true;
         dateTimeRange = newRange;
       });
+      _loadData();
     }
   }
 
-  loadData() {
-    widget.db.collection("events")
-    .where("startTime", isGreaterThanOrEqualTo: Timestamp.fromDate(dateTimeRange.start), isLessThanOrEqualTo: Timestamp.fromDate(dateTimeRange.end))
-    .orderBy("startTime", descending: true)
-    .get().then((res) {
-      List<Event> newEvents = [];
-      checked = List.generate(res.docs.length, (a) => false);
+  void _loadData() {
+    widget.db
+        .collection("events")
+        .where("startTime",
+            isGreaterThanOrEqualTo: Timestamp.fromDate(dateTimeRange.start),
+            isLessThanOrEqualTo: Timestamp.fromDate(dateTimeRange.end))
+        .orderBy("startTime", descending: true)
+        .get()
+        .then((res) {
+      final newEvents = <Event>[
+        for (final doc in res.docs)
+          Event(
+            id: doc.id,
+            name: doc.get("name"),
+            startTime: doc.get('startTime').toDate(),
+            endTime: doc.get('endTime').toDate(),
+          ),
+      ];
+      checked = List.generate(res.docs.length, (_) => false);
       loadCount = 0;
 
-      for (int i = 0; i < res.docs.length; ++i) {
-        var event = res.docs[i];
-        newEvents.add(Event(
-          id: event.id,
-          name: event.get("name"),
-          startTime: event.get('startTime').toDate(),
-          endTime: event.get('endTime').toDate()
-        ));
-        event.reference.collection("attendees").doc(widget.ticket.id).get().then((res) {
+      for (var i = 0; i < res.docs.length; ++i) {
+        final event = res.docs[i];
+        event.reference
+            .collection("attendees")
+            .doc(widget.ticket.id)
+            .get()
+            .then((res) {
           setState(() {
-            if (res.exists) {
-              checked[i] = res.get("checked");
-            } else {
-              checked[i] = null;
-            }
+            checked[i] = res.exists ? res.get("checked") : null;
             loadCount = loadCount + 1;
-
             if (loadCount == events.length) {
-              List<Event> newEvents = [];
-              List<bool> newChecked = [];
-
-              for (int i = 0; i < events.length; ++i) {
+              final filteredEvents = <Event>[];
+              final filteredChecked = <bool>[];
+              for (var i = 0; i < events.length; ++i) {
                 if (checked[i] != null) {
-                  newEvents.add(events[i]);
-                  newChecked.add(checked[i]!);
+                  filteredEvents.add(events[i]);
+                  filteredChecked.add(checked[i]!);
                 }
               }
-
-              events = newEvents;
-              checked = newChecked;
+              events = filteredEvents;
+              checked = filteredChecked;
               loadCount = events.length;
             }
           });
@@ -133,87 +119,113 @@ class _TicketEventViewState extends State<TicketEventView> {
     });
   }
 
+  String _rangeText(DateTimeRange r) {
+    final f = DateFormat('d MMM yyyy');
+    return '${f.format(r.start)} – ${f.format(r.end)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!init) {
       init = true;
-      DateTime now = DateTime.now();
-      DateTime lowDate = DateTime(now.year, now.month - 1, now.day); // this works!
-      DateTime highDate = DateTime(now.year, now.month, now.day);
-      dateTimeRange = DateTimeRange(start: lowDate, end: highDate);
+      final now = DateTime.now();
+      dateTimeRange = DateTimeRange(
+        start: DateTime(now.year, now.month - 1, now.day),
+        end: DateTime(now.year, now.month, now.day),
+      );
+      _loadData();
     }
+    dateRangeController = TextEditingController(text: _rangeText(dateTimeRange));
 
-    dateRangeController = TextEditingController(text: widget.getDateRangeString(dateTimeRange));
-
-    return loading ? renderLoad() : (loadCount != events.length ? renderHalf() : renderData());
-  }
-
-  Widget renderLoad() {
-    loadData();
-    return const Center(
-      child: CircularProgressIndicator(),
-    );
-  }
-
-  Widget renderHalf() {
-    return const Center(
-      child: CircularProgressIndicator(),
-    );
-  }
-
-  Widget renderData() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
       child: Column(
         children: [
-          Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            child: Text(
-                "Showing Attendance",
-                style: Theme.of(context).textTheme.headlineSmall
-            ),
-          ),
           TextField(
             readOnly: true,
             controller: dateRangeController,
             decoration: const InputDecoration(
-              border: OutlineInputBorder(),
               labelText: 'Range',
+              prefixIcon: Icon(Icons.calendar_today_rounded),
             ),
-            onTap: () {
-              _selectDateRange(context);
-            },
+            onTap: () => _selectDateRange(context),
           ),
+          const SizedBox(height: 12),
+          if (loading || loadCount != events.length)
+            const Expanded(child: SkeletonRows(count: 6))
+          else if (events.isEmpty)
+            const Expanded(
+              child: EmptyState(
+                icon: Icons.fact_check_outlined,
+                title: 'No attendance in range',
+                message: 'Try a wider date range to see history.',
+              ),
+            )
+          else
+            Expanded(
+              child: ListView.separated(
+                itemCount: events.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final event = events[index];
+                  final wasPresent = checked[index] == true;
+                  return _AttendanceRow(
+                    event: event,
+                    present: wasPresent,
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AttendanceRow extends StatelessWidget {
+  const _AttendanceRow({required this.event, required this.present});
+  final Event event;
+  final bool present;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          EventDateBlock(date: event.startTime, size: 48, highlight: present),
+          const SizedBox(width: 14),
           Expanded(
-            child: ListView.builder(
-              itemCount: events.length,
-              itemBuilder: (BuildContext context, int index) {
-                return Container(
-                  margin: const EdgeInsets.only(top: 5, bottom: 5),
-                  child: Material(
-                    child: ListTile(
-                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
-                      tileColor: Theme.of(context).colorScheme.secondaryContainer,
-                      title: Text(
-                        events[index].name,
-                        style: TextStyle(
-                          fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
-                        )
-                      ),
-                      subtitle: Text(
-                        events[index].getTimeString(),
-                        style: TextStyle(
-                          fontSize: Theme.of(context).textTheme.bodyMedium?.fontSize,
-                        )
-                      ),
-                      leading: Checkbox(value: checked[index], onChanged: (v) {}),
-                    ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  event.name,
+                  style: theme.textTheme.titleSmall,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  formatTimeRange(event.startTime, event.endTime),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
                   ),
-                );
-              },
+                ),
+              ],
             ),
           ),
-        ]
+          StatusPill(
+            label: present ? 'Present' : 'Absent',
+            icon: present ? Icons.check_rounded : Icons.close_rounded,
+            tone: present ? StatusPillTone.accent : StatusPillTone.neutral,
+          ),
+        ],
       ),
     );
   }

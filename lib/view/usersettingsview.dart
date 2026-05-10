@@ -3,26 +3,18 @@ import 'package:flutter/material.dart';
 
 import '../model/user.dart';
 import '../util/logger.dart';
+import 'widgets/app_scaffold.dart';
+import 'widgets/empty_state.dart';
+import 'widgets/status_widgets.dart';
 
 class UserSettingsView extends StatelessWidget {
   const UserSettingsView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return  Scaffold(
-      appBar: AppBar(
-      leading: TextButton(
-        onPressed: () {
-          Navigator.pop(context);
-        },
-        child: const Icon(Icons.arrow_back),
-      ),
-      backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      title: Text(
-        "Manage Users",
-        style: Theme.of(context).textTheme.headlineSmall,
-        ),
-      ),
+    return AppScaffold(
+      title: 'Manage users',
+      padded: false,
       body: UserListView(),
     );
   }
@@ -38,127 +30,193 @@ class UserListView extends StatefulWidget {
 
 class _UserListViewState extends State<UserListView> {
   @override
-  void setState(fn) {
-    if(mounted) {
-      super.setState(fn);
-    }
+  void setState(VoidCallback fn) {
+    if (mounted) super.setState(fn);
   }
 
   bool loading = true;
   List<User> users = [], showUsers = [];
   String query = '';
 
-  void onQueryChanged({String? newQuery}) {
-    if (newQuery != null) query = newQuery;
-    showUsers = users.where((t) => (
-      t.email.toLowerCase().contains(query.toLowerCase()) ||
-      t.role.toLowerCase().contains(query.toLowerCase())
-    )).toList();
-    showUsers.sort((a, b) => a.email.toLowerCase().compareTo(b.email.toLowerCase()));
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
   }
 
-  loadData() {
-    widget.db.collection("users").snapshots().listen((res) {
-      if (!mounted) return;
-      List<User> newUsers = [];
-      for (var user in res.docs) {
-        newUsers.add(User(
-          id: user.id,
-          email: user.get("email"),
-          role: user.get("role"),
-        ));
-      }
+  void _onQueryChanged() {
+    final q = query.toLowerCase();
+    showUsers = users
+        .where((u) => u.email.toLowerCase().contains(q) ||
+            u.role.toLowerCase().contains(q))
+        .toList()
+      ..sort((a, b) => a.email.toLowerCase().compareTo(b.email.toLowerCase()));
+  }
 
+  void _loadData() {
+    widget.db.collection("users").snapshots().listen((res) {
+      final newUsers = <User>[
+        for (final doc in res.docs)
+          User(
+            id: doc.id,
+            email: doc.get("email"),
+            role: doc.get("role"),
+          ),
+      ];
       setState(() {
         users = newUsers;
         loading = false;
-        onQueryChanged();
+        _onQueryChanged();
       });
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return loading ? renderLoad() : renderData();
-  }
-
-  Widget renderLoad() {
-    loadData();
-    return const Center(
-      child: CircularProgressIndicator(),
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: TextField(
+            onChanged: (v) {
+              setState(() {
+                query = v;
+                _onQueryChanged();
+              });
+            },
+            decoration: InputDecoration(
+              hintText: 'Search by email or role',
+              prefixIcon: const Icon(Icons.search_rounded),
+              isDense: true,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+                borderSide: BorderSide(
+                    color: scheme.outlineVariant.withValues(alpha: 0.6)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+                borderSide: BorderSide(
+                    color: scheme.outlineVariant.withValues(alpha: 0.6)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+                borderSide: BorderSide(color: scheme.primary, width: 1.4),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: loading
+              ? const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: SkeletonRows(count: 6),
+                )
+              : showUsers.isEmpty
+                  ? const EmptyState(
+                      icon: Icons.person_search_rounded,
+                      title: 'No users match',
+                      message: 'Try a different search term.',
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      itemCount: showUsers.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) =>
+                          _UserRow(user: showUsers[index], onChange: _changeRole),
+                    ),
+        ),
+      ],
     );
   }
 
-  Widget renderData() {
-    List<String> adminEntries = ["admin"];
-    List<String> regularEntries = ["usher", "auditor", "disabled"];
+  void _changeRole(User user, String newRole) {
+    if (newRole == user.role) return;
+    widget.db
+        .collection("users")
+        .doc(user.id)
+        .update({"role": newRole}).then((_) {
+      Logger.changeRole(user.role, newRole, user.email);
+      setState(() => user.role = newRole);
+    });
+  }
+}
+
+class _UserRow extends StatelessWidget {
+  const _UserRow({required this.user, required this.onChange});
+  final User user;
+  final void Function(User user, String newRole) onChange;
+
+  static const _adminEntries = ["admin"];
+  static const _regularEntries = ["usher", "auditor", "disabled"];
+
+  StatusPillTone _toneFor(String role) => switch (role) {
+        'admin' => StatusPillTone.accent,
+        'usher' => StatusPillTone.accent,
+        'auditor' => StatusPillTone.neutral,
+        _ => StatusPillTone.warning,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final entries = user.role == 'admin' ? _adminEntries : _regularEntries;
     return Container(
-      margin: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-      child: Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 10, bottom: 10),
-              child: TextField(
-                onChanged: (query) {
-                  setState(() {
-                    onQueryChanged(newQuery: query);
-                  });
-                },
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: 'Search',
-                )
-              ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.email,
+                  style: theme.textTheme.titleSmall,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                StatusPill(
+                  label: user.role.toUpperCase(),
+                  tone: _toneFor(user.role),
+                ),
+              ],
             ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: showUsers.length,
-                itemBuilder: (BuildContext context, int index) {
-                  return Container(
-                    margin: const EdgeInsets.only(top: 5, bottom: 5),
-                    child: Material(
-                      child: ListTile(
-                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
-                        tileColor: Theme.of(context).colorScheme.secondaryContainer,
-                        title: Text(
-                          showUsers[index].email,
-                          style: TextStyle(
-                            fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
-                          )
+          ),
+          if (user.role != 'admin')
+            PopupMenuButton<String>(
+              icon: Icon(Icons.more_vert_rounded,
+                  color: scheme.onSurfaceVariant),
+              tooltip: 'Change role',
+              onSelected: (value) => onChange(user, value),
+              itemBuilder: (context) => [
+                for (final role in entries)
+                  PopupMenuItem(
+                    value: role,
+                    child: Row(
+                      children: [
+                        Icon(
+                          role == user.role
+                              ? Icons.radio_button_checked_rounded
+                              : Icons.radio_button_unchecked_rounded,
+                          size: 18,
+                          color: scheme.onSurfaceVariant,
                         ),
-                        contentPadding: const EdgeInsets.all(15),
-                        trailing: DropdownMenu<String>(
-                          initialSelection: showUsers[index].role,
-                          controller: TextEditingController(text: showUsers[index].role),
-                          label: const Text("Role"),
-                          enabled: showUsers[index].role != "admin",
-                          onSelected: (String? newRole) {
-                            if (newRole != null && newRole != showUsers[index].role) {
-                              widget.db.collection("users").doc(
-                                  showUsers[index].id).update({
-                                "role": newRole
-                              });
-                              Logger.changeRole(showUsers[index].role, newRole, showUsers[index].email);
-                              setState((){
-                                showUsers[index].role = newRole;
-                              });
-                            }
-                          },
-                          dropdownMenuEntries: (showUsers[index].role == "admin" ? adminEntries : regularEntries)
-                            .map<DropdownMenuEntry<String>>((String s) {
-                              return DropdownMenuEntry<String>(
-                                value: s,
-                                label: s
-                              );
-                          }).toList(),
-                        ),
-                      ),
+                        const SizedBox(width: 10),
+                        Text(role[0].toUpperCase() + role.substring(1)),
+                      ],
                     ),
-                  );
-                },
-              ),
+                  ),
+              ],
             ),
-          ]
+        ],
       ),
     );
   }

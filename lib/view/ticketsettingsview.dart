@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../model/ticket.dart';
 import '../util/logger.dart';
+import 'widgets/app_scaffold.dart';
 
 class TicketSettingsView extends StatefulWidget {
   TicketSettingsView({super.key});
@@ -18,259 +19,166 @@ class _TicketSettingsViewState extends State<TicketSettingsView> {
   late String newTicketName;
   late bool newRegular, newActive;
 
-  void createTicket(BuildContext context) {
+  Future<void> _createTicket(BuildContext context) async {
     newTicketName = "";
     newRegular = true;
     newActive = true;
-    showDialog(
+
+    final res = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Create Ticket"),
-        content: StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: TextEditingController(text: newTicketName),
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Name',
-                  ),
-                  onChanged: (text) {
-                    newTicketName = text;
-                  },
-                ),
-                CheckboxListTile(
-                  title: const Text("Regular"),
-                  value: newRegular,
-                  onChanged: (value) {
-                    setState(() {
-                      newRegular = value!;
-                    });
-                  }
-                ),
-                CheckboxListTile(
-                  title: const Text("Active"),
-                  value: newActive,
-                  onChanged: (value) {
-                    setState(() {
-                      newActive = value!;
-                    });
-                  }
-                )
-              ]
-            );
-          }
+        titlePadding: const EdgeInsets.fromLTRB(24, 16, 8, 0),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+        title: Row(
+          children: [
+            const Expanded(child: Text("Create ticket")),
+            IconButton(
+              tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+              icon: const Icon(Icons.close_rounded),
+              onPressed: () => Navigator.pop(context, false),
+            ),
+          ],
         ),
+        content: StatefulBuilder(builder: (context, setState) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                decoration: const InputDecoration(labelText: 'Name'),
+                onChanged: (text) => newTicketName = text,
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                title: const Text("Regular"),
+                subtitle: const Text("Counted as part of the regular roll"),
+                value: newRegular,
+                onChanged: (v) => setState(() => newRegular = v),
+              ),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                title: const Text("Active"),
+                subtitle: const Text(
+                    "Auto-added to new events when active"),
+                value: newActive,
+                onChanged: (v) => setState(() => newActive = v),
+              ),
+            ],
+          );
+        }),
         actions: [
-          TextButton(
-            child: Text(
-                "Cancel",
-                style: TextStyle(
-                    fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
-                )
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text("Create"),
             ),
-            onPressed: () { Navigator.pop(context, false); },
           ),
-          FilledButton(
-            style: const ButtonStyle(
-              elevation: WidgetStatePropertyAll(2),
-              shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)))),
-            ),
-            child: Text(
-                "Confirm",
-                style: TextStyle(
-                    fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
-                )
-            ),
-            onPressed: () { Navigator.pop(context, true); },
-          ),
-        ]
+        ],
       ),
-    ).then((res){
-      if (res) {
-        var ticket = widget.db.collection("tickets").doc();
-        ticket.set({
-          "name": newTicketName,
-          "regular": newRegular,
-          "active": newActive,
-        });
-        Logger.createTicket(Ticket(
+    );
+
+    if (res == true) {
+      final ticket = widget.db.collection("tickets").doc();
+      await ticket.set({
+        "name": newTicketName,
+        "regular": newRegular,
+        "active": newActive,
+      });
+      Logger.createTicket(Ticket(
           id: "",
           name: newTicketName,
           regular: newRegular,
-          active: newActive)
-        );
-      }
-    });
+          active: newActive));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return  Scaffold(
-      appBar: AppBar(
-      leading: TextButton(
-        onPressed: () {
-          Navigator.pop(context);
-        },
-        child: const Icon(Icons.arrow_back),
-      ),
-      backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      title: Text(
-        "Manage Tickets",
-        style: Theme.of(context).textTheme.headlineSmall,
-        ),
+    return AppScaffold(
+      title: 'Manage tickets',
+      padded: false,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _createTicket(context),
+        child: const Icon(Icons.add_rounded),
       ),
       body: TicketListView(onTicketPressed: (Ticket ticket) {
         EditTicketHelper().editTicket(context, ticket);
       }),
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.add),
-        onPressed: () {
-          createTicket(context);
-        },
-      ),
     );
   }
 }
 
 class EditTicketHelper {
   final db = FirebaseFirestore.instance;
-  void editTicket(BuildContext context, Ticket ticket) {
-    Widget confirmButton = FilledButton(
-      style: const ButtonStyle(
-        elevation: WidgetStatePropertyAll(2),
-        shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)))),
-      ),
-      child: Text(
-          "Confirm",
-          style: TextStyle(
-              fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
-          )
-      ),
-      onPressed: () { Navigator.pop(context, "confirm"); },
-    );
-    Widget cancelButton = TextButton(
-      child: Text(
-          "Cancel",
-          style: TextStyle(
-              fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
-          )
-      ),
-      onPressed: () { Navigator.pop(context, "cancel"); },
-    );
 
-    Ticket original = ticket.copy();
-    showDialog(
+  void editTicket(BuildContext context, Ticket ticket) {
+    final original = ticket.copy();
+
+    showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Edit Ticket"),
-        content: StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
+      builder: (context) {
+        final scheme = Theme.of(context).colorScheme;
+        return AlertDialog(
+          titlePadding: const EdgeInsets.fromLTRB(24, 16, 8, 0),
+          actionsPadding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+          title: Row(
+            children: [
+              const Expanded(child: Text("Edit ticket")),
+              if (kDebugMode)
+                IconButton(
+                  tooltip: 'Delete',
+                  icon: Icon(Icons.delete_outline_rounded, color: scheme.error),
+                  onPressed: () => _confirmDelete(context),
+                ),
+              IconButton(
+                tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                icon: const Icon(Icons.close_rounded),
+                onPressed: () => Navigator.pop(context, "cancel"),
+              ),
+            ],
+          ),
+          content: StatefulBuilder(builder: (context, setState) {
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  child: Column(
-                    children: [
-                      TextField(
-                        controller: TextEditingController(text: ticket.name),
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          labelText: 'Name',
-                        ),
-                        onChanged: (text) {
-                          ticket.name = text;
-                        },
-                      ),
-                      CheckboxListTile(
-                        title: const Text("Regular"),
-                        value: ticket.regular,
-                        onChanged: (value) {
-                          setState(() {
-                            ticket.regular = value!;
-                          });
-                        }
-                      ),
-                      CheckboxListTile(
-                        title: const Text("Active"),
-                        value: ticket.active,
-                        onChanged: (value) {
-                          setState(() {
-                            ticket.active = value!;
-                          });
-                        }
-                      )
-                    ]
-                  )
+                TextField(
+                  controller: TextEditingController(text: ticket.name),
+                  decoration: const InputDecoration(labelText: 'Name'),
+                  onChanged: (text) => ticket.name = text,
                 ),
-              ]
+                const SizedBox(height: 8),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text("Regular"),
+                  value: ticket.regular,
+                  onChanged: (v) => setState(() => ticket.regular = v),
+                ),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text("Active"),
+                  value: ticket.active,
+                  onChanged: (v) => setState(() => ticket.active = v),
+                ),
+              ],
             );
-          },
-        ),
-        actions: (kDebugMode) ? [
-          TextButton(
-            child: Text(
-                "Delete",
-                style: TextStyle(
-                    fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
-                )
+          }),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.pop(context, "confirm"),
+                child: const Text("Save"),
+              ),
             ),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                    title: const Text("Delete"),
-                    content: Text(
-                        "Are you sure you want to delete this ticket?",
-                        style: TextStyle(
-                          fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
-                        )
-                    ),
-                    actions: [
-                      TextButton(
-                        child: Text(
-                            "Cancel",
-                            style: TextStyle(
-                                fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
-                            )
-                        ),
-                        onPressed: () { Navigator.pop(context, false); },
-                      ),
-                      FilledButton(
-                        style: const ButtonStyle(
-                          elevation: WidgetStatePropertyAll(2),
-                          shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10)))),
-                        ),
-                        child: Text(
-                            "Confirm",
-                            style: TextStyle(
-                                fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize
-                            )
-                        ),
-                        onPressed: () { Navigator.pop(context, true); },
-                      ),
-                    ]
-                ),
-              ).then((res){
-                if (res) {
-                  Navigator.pop(context, "delete");
-                }
-              });
-            },
-          ),
-          cancelButton,
-          confirmButton
-        ] : [
-          cancelButton,
-          confirmButton,
-        ]
-      ),
-    ).then((res){
+          ],
+        );
+      },
+    ).then((res) {
       if (res == "confirm") {
-        if (original.name != ticket.name || original.regular != ticket.regular || original.active != ticket.active) {
+        if (original.name != ticket.name ||
+            original.regular != ticket.regular ||
+            original.active != ticket.active) {
           db.collection("tickets").doc(ticket.id).set({
             "name": ticket.name,
             "regular": ticket.regular,
@@ -280,16 +188,40 @@ class EditTicketHelper {
         }
       } else if (res == "delete") {
         db.collection("tickets").doc(ticket.id).delete();
-
         final batch = db.batch();
         db.collection("events").get().then((res) {
           for (final event in res.docs) {
-            final ref = event.reference.collection("attendees").doc(ticket.id);
-            batch.delete(ref);
+            batch.delete(event.reference.collection("attendees").doc(ticket.id));
           }
           batch.commit();
         });
       }
     });
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Delete ticket"),
+        content: const Text("Are you sure you want to delete this ticket?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && context.mounted) {
+      Navigator.pop(context, "delete");
+    }
   }
 }

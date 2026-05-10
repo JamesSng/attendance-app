@@ -3,26 +3,16 @@ import 'package:attendance_app/view/ticketview.dart';
 import 'package:flutter/material.dart';
 
 import '../model/ticket.dart';
+import 'widgets/app_scaffold.dart';
 
 class TicketHistoryView extends StatelessWidget {
   const TicketHistoryView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return  Scaffold(
-      appBar: AppBar(
-      leading: TextButton(
-        onPressed: () {
-          Navigator.pop(context);
-        },
-        child: const Icon(Icons.arrow_back),
-      ),
-      backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      title: Text(
-        "Ticket History",
-        style: Theme.of(context).textTheme.headlineSmall,
-        ),
-      ),
+    return AppScaffold(
+      title: 'Ticket history',
+      padded: false,
       body: TicketListView(onTicketPressed: (Ticket ticket) {
         Navigator.push(
           context,

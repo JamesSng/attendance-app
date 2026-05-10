@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 
 import '../model/event.dart';
 import '../model/ticket.dart';
+import '../util/time_format.dart';
+import 'widgets/app_scaffold.dart';
+import 'widgets/empty_state.dart';
+import 'widgets/filter_chip_bar.dart';
+import 'widgets/status_widgets.dart';
 
 class AttendanceView extends StatelessWidget {
   const AttendanceView({super.key, required this.event, this.reviewMode = false});
@@ -12,48 +17,30 @@ class AttendanceView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        leading: TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          child: const Icon(Icons.arrow_back),
-        ),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(
-          event.name,
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
+    return AppScaffold(
+      title: event.name,
+      subtitle: '${formatDayLabel(event.startTime)} · '
+          '${formatTimeRange(event.startTime, event.endTime)}',
+      padded: false,
+      body: AttendanceListView(
+        eventId: event.id,
+        event: event,
+        reviewMode: reviewMode,
       ),
-      body: Container(
-        padding: const EdgeInsets.only(top: 10),
-        child: Column(
-          children: [
-            Text(
-              event.isOngoing() ? "Ongoing" : (event.isUpcoming() ? "Upcoming" : "Ended"),
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            Text(
-              event.getTimeString(),
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const Divider(
-              height: 20,
-              thickness: 0.5,
-              color: Colors.black,
-            ),
-            Expanded(child: AttendanceListView(eventId: event.id, reviewMode: reviewMode)),
-          ]
-        ),
-      )
     );
   }
 }
 
 class AttendanceListView extends StatefulWidget {
-  AttendanceListView({super.key, required this.eventId, this.reviewMode = false});
+  AttendanceListView({
+    super.key,
+    required this.eventId,
+    required this.event,
+    this.reviewMode = false,
+  });
+
   final String eventId;
+  final Event event;
   final bool reviewMode;
   final db = FirebaseFirestore.instance;
 
@@ -61,12 +48,12 @@ class AttendanceListView extends StatefulWidget {
   State<AttendanceListView> createState() => _AttendanceViewState();
 }
 
+enum _AttendanceFilter { all, regulars, others, unchecked }
+
 class _AttendanceViewState extends State<AttendanceListView> {
   @override
-  void setState(fn) {
-    if(mounted) {
-      super.setState(fn);
-    }
+  void setState(VoidCallback fn) {
+    if (mounted) super.setState(fn);
   }
 
   bool loadingChecked = true, loadingMap = true;
@@ -75,78 +62,83 @@ class _AttendanceViewState extends State<AttendanceListView> {
   List<Ticket> tickets = [], showTickets = [];
 
   String query = '';
-  bool showRegular = true, showNonRegular = false;
+  _AttendanceFilter filter = _AttendanceFilter.all;
 
-  void onQueryChanged({String? newQuery, bool? newShowRegular, bool? newShowNonRegular}) {
-    if (newQuery != null) query = newQuery;
-    if (newShowRegular != null) showRegular = newShowRegular;
-    if (newShowNonRegular != null) showNonRegular = newShowNonRegular;
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
 
+  void _onQueryChanged() {
     showTickets = tickets
-      .where((t) => t.name.toLowerCase().contains(query.toLowerCase()))
-      .where((t) => (showRegular && t.regular) || (showNonRegular && !t.regular))
-      .toList();
-    showTickets.sort((a, b) {
-      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-    });
+        .where((t) => t.name.toLowerCase().contains(query.toLowerCase()))
+        .where((t) => switch (filter) {
+              _AttendanceFilter.all => true,
+              _AttendanceFilter.regulars => t.regular,
+              _AttendanceFilter.others => !t.regular,
+              _AttendanceFilter.unchecked => !t.checked,
+            })
+        .toList()
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
   }
 
-  loadData() {
-    // query for the list of checked
-    widget.db.collection("events").doc(widget.eventId).collection("attendees").snapshots().listen((res) {
-      List<Ticket> newTickets = [];
-      for (var ticket in res.docs) {
-        newTickets.add(Ticket(
-            id: ticket.id,
-            name: '',
-            regular: false,
-            checked: ticket.get('checked'))
-        );
-      }
-
-      processData(newTickets, false, idToTicket, loadingMap);
+  void _loadData() {
+    widget.db
+        .collection("events")
+        .doc(widget.eventId)
+        .collection("attendees")
+        .snapshots()
+        .listen((res) {
+      final newTickets = <Ticket>[
+        for (final ticket in res.docs)
+          Ticket(
+              id: ticket.id,
+              name: '',
+              regular: false,
+              checked: ticket.get('checked')),
+      ];
+      _processData(newTickets, false, idToTicket, loadingMap);
     });
 
-    // query for id to name
     widget.db.collection("tickets").snapshots().listen((res) {
-      Map<String, Ticket> newMap = {};
-      for (var ticket in res.docs) {
-        newMap[ticket.id] = Ticket(
-          id: ticket.id,
-          name: ticket.get('name'),
-          regular: ticket.get('regular'),
-          active: ticket.get('active'),
-        );
-      }
-
-      processData(tickets, loadingChecked, newMap, false);
+      final newMap = <String, Ticket>{
+        for (final ticket in res.docs)
+          ticket.id: Ticket(
+            id: ticket.id,
+            name: ticket.get('name'),
+            regular: ticket.get('regular'),
+            active: ticket.get('active'),
+          ),
+      };
+      _processData(tickets, loadingChecked, newMap, false);
     });
   }
 
-  processData(List<Ticket> newTickets, bool newLoadingChecked, Map<String, Ticket> newIdToTicket, bool newLoadingMap) {
-    int newChecked = 0;
-    List<Ticket> filteredTickets = [];
-
+  void _processData(
+    List<Ticket> newTickets,
+    bool newLoadingChecked,
+    Map<String, Ticket> newIdToTicket,
+    bool newLoadingMap,
+  ) {
     if (!newLoadingMap && !newLoadingChecked) {
-      for (Ticket ticket in newTickets) {
-        Ticket? newTicket = newIdToTicket[ticket.id];
-        newTicket?.checked = ticket.checked;
-
-        if (newTicket != null) {
-          filteredTickets.add(newTicket);
-          if (newTicket.checked) {
-            ++newChecked;
-          }
+      var newChecked = 0;
+      final filtered = <Ticket>[];
+      for (final ticket in newTickets) {
+        final mapped = newIdToTicket[ticket.id];
+        if (mapped != null) {
+          mapped.checked = ticket.checked;
+          filtered.add(mapped);
+          if (mapped.checked) newChecked++;
         }
       }
-
       setState(() {
-        tickets = filteredTickets;
+        tickets = filtered;
         idToTicket = newIdToTicket;
         checkedNo = newChecked;
         loadingChecked = newLoadingChecked;
         loadingMap = newLoadingMap;
-        onQueryChanged();
+        _onQueryChanged();
       });
     } else {
       setState(() {
@@ -158,152 +150,335 @@ class _AttendanceViewState extends State<AttendanceListView> {
     }
   }
 
-  updateChecked(index, value) {
-    widget.db.collection("events")
-      .doc(widget.eventId)
-      .collection("attendees")
-      .doc(showTickets[index].id)
-      .update({'checked': value});
+  void _updateChecked(int index, bool value) {
+    widget.db
+        .collection("events")
+        .doc(widget.eventId)
+        .collection("attendees")
+        .doc(showTickets[index].id)
+        .update({'checked': value});
   }
 
   @override
   Widget build(BuildContext context) {
-    return (loadingChecked && loadingMap) ? renderLoad() : ((loadingChecked || loadingMap) ? renderHalf() : renderData(context));
+    if (loadingChecked || loadingMap) return const _AttendanceSkeleton();
+    return _renderData(context);
   }
 
-  Widget renderLoad() {
-    loadData();
-    return const Center(
-      child: CircularProgressIndicator(),
-    );
-  }
+  Widget _renderData(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final regulars = tickets.where((t) => t.regular).length;
+    final others = tickets.length - regulars;
+    final unchecked = tickets.where((t) => !t.checked).length;
+    final total = tickets.length;
+    final progress = total == 0 ? 0.0 : checkedNo / total;
+    final isOngoing = widget.event.isOngoing();
 
-  Widget renderHalf() {
-    return const Center(
-      child: CircularProgressIndicator(),
-    );
-  }
-
-  Widget renderData(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-      child: Column(
-        children: [
-          Text(
-            'Attendees ($checkedNo/${tickets.length})',
-            style: Theme
-            .of(context)
-            .textTheme
-            .headlineSmall,
-          ),
-          Container(
-            margin: const EdgeInsets.only(top: 10, bottom: 10),
-            child: Column(
-              children: [
-                TextField(
-                  onChanged: (String? value) {
-                    value ??= "";
-                    setState(() {
-                      onQueryChanged(newQuery: value);
-                    });
-                  },
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Search',
-                  )
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: MediaQuery.of(context).size.width / 2 * 0.9,
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '$checkedNo',
+                    style: theme.textTheme.displaySmall,
+                  ),
+                  const SizedBox(width: 4),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(
+                      '/ $total checked in',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
                       ),
-                      child: SizedBox(
-                        width: 200,
-                        child: CheckboxListTile(
-                          title: Text(
-                              "Regulars",
-                              style: TextStyle(
-                                fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
-                              )
-                          ),
-                          value: showRegular,
-                          onChanged: (bool? value) {
-                            value ??= false;
-                            setState(() {
-                              onQueryChanged(newShowRegular: value);
-                            });
-                          }
-                        )
-                      )
-                    ),
-                    ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width / 2 * 0.9,
-                        ),
-                        child: SizedBox(
-                            width: 200,
-                            child: CheckboxListTile(
-                                title: Text(
-                                  "Others",
-                                  style: TextStyle(
-                                    fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
-                                  )
-                                ),
-                                value: showNonRegular,
-                                onChanged: (bool? value) {
-                                  value ??= false;
-                                  setState(() {
-                                    onQueryChanged(newShowNonRegular: value);
-                                  });
-                                }
-                            )
-                        )
-                    ),
-                  ]
-                )
-              ],
-            )
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: showTickets.length,
-              itemBuilder: (BuildContext context, int index) {
-                return Container(
-                  margin: const EdgeInsets.only(top: 5, bottom: 5),
-                  child: Material(
-                    child: ListTile(
-                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
-                      tileColor: Theme.of(context).colorScheme.primaryContainer,
-                      leading: Checkbox(
-                        onChanged: (bool? value) {
-                          if (!widget.reviewMode) {
-                            updateChecked(index, value!);
-                          }
-                        },
-                        value: showTickets[index].checked,
-                      ),
-                      title: Text(
-                        showTickets[index].name,
-                        style: TextStyle(
-                          fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
-                        )
-                      ),
-                      subtitle: Text(
-                        showTickets[index].regular ? "Regular" : "Others",
-                        style: TextStyle(
-                          fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
-                        )
-                      )
                     ),
                   ),
-                );
-              },
+                  const Spacer(),
+                  if (isOngoing) const LivePill(),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: total == 0 ? null : progress,
+                  minHeight: 6,
+                  backgroundColor: scheme.surfaceContainerHighest
+                      .withValues(alpha: 0.6),
+                  valueColor: AlwaysStoppedAnimation(scheme.primary),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                total == 0
+                    ? 'No active tickets yet'
+                    : formatEventStatusLine(
+                        startTime: widget.event.startTime,
+                        endTime: widget.event.endTime,
+                      ),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: TextField(
+            onChanged: (v) {
+              setState(() {
+                query = v;
+                _onQueryChanged();
+              });
+            },
+            decoration: InputDecoration(
+              hintText: 'Search attendees',
+              prefixIcon: const Icon(Icons.search_rounded),
+              isDense: true,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+                borderSide: BorderSide(
+                    color: scheme.outlineVariant.withValues(alpha: 0.6)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+                borderSide: BorderSide(
+                    color: scheme.outlineVariant.withValues(alpha: 0.6)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+                borderSide: BorderSide(color: scheme.primary, width: 1.4),
+              ),
             ),
           ),
-        ]
+        ),
+        SizedBox(
+          height: 38,
+          child: FilterChipBar<_AttendanceFilter>(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            options: [
+              FilterChipOption(
+                  id: _AttendanceFilter.all, label: 'All', count: total),
+              FilterChipOption(
+                  id: _AttendanceFilter.regulars,
+                  label: 'Regulars',
+                  count: regulars),
+              FilterChipOption(
+                  id: _AttendanceFilter.others, label: 'Others', count: others),
+              FilterChipOption(
+                  id: _AttendanceFilter.unchecked,
+                  label: 'Unchecked',
+                  count: unchecked),
+            ],
+            selectedIds: {filter},
+            onToggle: (id) {
+              setState(() {
+                filter = id;
+                _onQueryChanged();
+              });
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: showTickets.isEmpty
+              ? const EmptyState(
+                  icon: Icons.search_off_rounded,
+                  title: 'No matches',
+                  message: 'Try a different filter or clear the search.',
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  itemCount: showTickets.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final ticket = showTickets[index];
+                    return _AttendeeRow(
+                      ticket: ticket,
+                      readonly: widget.reviewMode,
+                      onChanged: (value) => _updateChecked(index, value),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AttendeeRow extends StatelessWidget {
+  const _AttendeeRow({
+    required this.ticket,
+    required this.onChanged,
+    required this.readonly,
+  });
+
+  final Ticket ticket;
+  final ValueChanged<bool> onChanged;
+  final bool readonly;
+
+  String get _initials {
+    final parts = ticket.name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return '?';
+    if (parts.length == 1) return parts.first.characters.first.toUpperCase();
+    return (parts.first.characters.first + parts.last.characters.first)
+        .toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final selected = ticket.checked;
+    return Material(
+      color: selected
+          ? scheme.primary.withValues(alpha: 0.06)
+          : scheme.surface,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(
+          color: selected
+              ? scheme.primary.withValues(alpha: 0.35)
+              : scheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+        borderRadius: BorderRadius.circular(14),
       ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: readonly ? null : () => onChanged(!selected),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.7),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _initials,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      ticket.name,
+                      style: theme.textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 4),
+                    StatusPill(
+                      label: ticket.regular ? 'Regular' : 'Other',
+                      tone: ticket.regular
+                          ? StatusPillTone.accent
+                          : StatusPillTone.neutral,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              _CheckBadge(
+                checked: selected,
+                disabled: readonly,
+                onTap: readonly ? null : () => onChanged(!selected),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CheckBadge extends StatelessWidget {
+  const _CheckBadge({
+    required this.checked,
+    required this.disabled,
+    required this.onTap,
+  });
+
+  final bool checked;
+  final bool disabled;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    const size = 28.0;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: checked
+              ? (disabled
+                  ? scheme.primary.withValues(alpha: 0.5)
+                  : scheme.primary)
+              : Colors.transparent,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: checked
+                ? Colors.transparent
+                : scheme.outlineVariant.withValues(alpha: 0.8),
+            width: 1.4,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: checked
+            ? Icon(
+                Icons.check_rounded,
+                size: 18,
+                color: scheme.onPrimary,
+              )
+            : null,
+      ),
+    );
+  }
+}
+
+class _AttendanceSkeleton extends StatelessWidget {
+  const _AttendanceSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      children: const [
+        SkeletonBlock(height: 28, width: 160),
+        SizedBox(height: 12),
+        SkeletonBlock(height: 6, borderRadius: 999),
+        SizedBox(height: 14),
+        SkeletonBlock(height: 40, borderRadius: 999),
+        SizedBox(height: 12),
+        SkeletonBlock(height: 32, width: 240, borderRadius: 999),
+        SizedBox(height: 16),
+        SkeletonBlock(height: 60, borderRadius: 14),
+        SizedBox(height: 8),
+        SkeletonBlock(height: 60, borderRadius: 14),
+        SizedBox(height: 8),
+        SkeletonBlock(height: 60, borderRadius: 14),
+        SizedBox(height: 8),
+        SkeletonBlock(height: 60, borderRadius: 14),
+      ],
     );
   }
 }
