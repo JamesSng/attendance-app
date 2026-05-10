@@ -2,6 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../model/ticket.dart';
+import 'widgets/empty_state.dart';
+import 'widgets/filter_chip_bar.dart';
+import 'widgets/status_widgets.dart';
 
 class TicketListView extends StatefulWidget {
   TicketListView({super.key, required this.onTicketPressed});
@@ -12,236 +15,274 @@ class TicketListView extends StatefulWidget {
   State<TicketListView> createState() => _TicketListViewState();
 }
 
+enum _TicketGroupFilter { all, regulars, others }
+
+enum _TicketStateFilter { active, inactive, both }
+
 class _TicketListViewState extends State<TicketListView> {
   @override
-  void setState(fn) {
-    if(mounted) {
-      super.setState(fn);
-    }
+  void setState(VoidCallback fn) {
+    if (mounted) super.setState(fn);
   }
 
   bool loading = true;
   List<Ticket> tickets = [], showTickets = [];
   String query = '';
-  bool showRegular = true, showNonRegular = true, showActive = true, showInactive = false;
+  _TicketGroupFilter group = _TicketGroupFilter.all;
+  _TicketStateFilter state = _TicketStateFilter.active;
 
-  void onQueryChanged({String? newQuery, bool? newShowRegular, bool? newShowNonRegular, bool? newShowActive, bool? newShowInactive}) {
-    if (newQuery != null) query = newQuery;
-    if (newShowRegular != null) showRegular = newShowRegular;
-    if (newShowNonRegular != null) showNonRegular = newShowNonRegular;
-    if (newShowActive != null) showActive = newShowActive;
-    if (newShowInactive != null) showInactive = newShowInactive;
-    showTickets = tickets
-        .where((t) => t.name.toLowerCase().contains(query.toLowerCase()))
-        .where((t) => (showRegular && t.regular) || (showNonRegular && !t.regular))
-        .where((t) => (showActive && t.active) || (showInactive && !t.active))
-        .toList();
-    showTickets.sort((a, b) {
-      if (a.active == b.active) {
-        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-      } else {
-        return a.active ? -1 : 1;
-      }
-    });
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
   }
 
-  loadData() {
-    widget.db.collection("tickets").snapshots().listen((res) {
-      List<Ticket> newTickets = [];
-      for (var ticket in res.docs) {
-        newTickets.add(Ticket(
-          id: ticket.id,
-          name: ticket.get("name"),
-          regular: ticket.get("regular"),
-          active: ticket.get("active"),
-          checked: false,
-        ));
-      }
+  void _onQueryChanged() {
+    final q = query.toLowerCase();
+    showTickets = tickets
+        .where((t) => t.name.toLowerCase().contains(q))
+        .where((t) => switch (group) {
+              _TicketGroupFilter.all => true,
+              _TicketGroupFilter.regulars => t.regular,
+              _TicketGroupFilter.others => !t.regular,
+            })
+        .where((t) => switch (state) {
+              _TicketStateFilter.both => true,
+              _TicketStateFilter.active => t.active,
+              _TicketStateFilter.inactive => !t.active,
+            })
+        .toList()
+      ..sort((a, b) {
+        if (a.active == b.active) {
+          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        }
+        return a.active ? -1 : 1;
+      });
+  }
 
+  void _loadData() {
+    widget.db.collection("tickets").snapshots().listen((res) {
+      final newTickets = <Ticket>[
+        for (final doc in res.docs)
+          Ticket(
+            id: doc.id,
+            name: doc.get("name"),
+            regular: doc.get("regular"),
+            active: doc.get("active"),
+            checked: false,
+          ),
+      ];
       setState(() {
         tickets = newTickets;
         loading = false;
-        onQueryChanged();
+        _onQueryChanged();
       });
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return loading ? renderLoad() : renderData();
-  }
+    if (loading) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 16),
+        child: SkeletonRows(count: 6),
+      );
+    }
+    final scheme = Theme.of(context).colorScheme;
+    final regulars = tickets.where((t) => t.regular).length;
+    final others = tickets.length - regulars;
 
-  Widget renderLoad() {
-    loadData();
-    return const Center(
-      child: CircularProgressIndicator(),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: TextField(
+            onChanged: (v) {
+              setState(() {
+                query = v;
+                _onQueryChanged();
+              });
+            },
+            decoration: InputDecoration(
+              hintText: 'Search tickets',
+              prefixIcon: const Icon(Icons.search_rounded),
+              isDense: true,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+                borderSide: BorderSide(
+                    color: scheme.outlineVariant.withValues(alpha: 0.6)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+                borderSide: BorderSide(
+                    color: scheme.outlineVariant.withValues(alpha: 0.6)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+                borderSide: BorderSide(color: scheme.primary, width: 1.4),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 38,
+          child: FilterChipBar<_TicketGroupFilter>(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            options: [
+              FilterChipOption(
+                  id: _TicketGroupFilter.all, label: 'All', count: tickets.length),
+              FilterChipOption(
+                  id: _TicketGroupFilter.regulars,
+                  label: 'Regulars',
+                  count: regulars),
+              FilterChipOption(
+                  id: _TicketGroupFilter.others, label: 'Others', count: others),
+            ],
+            selectedIds: {group},
+            onToggle: (id) {
+              setState(() {
+                group = id;
+                _onQueryChanged();
+              });
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 38,
+          child: FilterChipBar<_TicketStateFilter>(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            options: const [
+              FilterChipOption(
+                  id: _TicketStateFilter.active, label: 'Active'),
+              FilterChipOption(
+                  id: _TicketStateFilter.inactive, label: 'Inactive'),
+              FilterChipOption(
+                  id: _TicketStateFilter.both, label: 'Both'),
+            ],
+            selectedIds: {state},
+            onToggle: (id) {
+              setState(() {
+                state = id;
+                _onQueryChanged();
+              });
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: showTickets.isEmpty
+              ? const EmptyState(
+                  icon: Icons.confirmation_number_outlined,
+                  title: 'No tickets match',
+                  message: 'Adjust the filters or clear your search.',
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  itemCount: showTickets.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final ticket = showTickets[index];
+                    return _TicketRow(
+                      ticket: ticket,
+                      onTap: () => widget.onTicketPressed(ticket),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
+}
 
-  Widget renderData() {
-    return Container(
-      margin: const EdgeInsets.all(10),
-      child: Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 10, bottom: 10),
-              child: Column(
-                  children: [
-                    TextField(
-                        onChanged: (query) {
-                          setState(() {
-                            onQueryChanged(newQuery: query);
-                          });
-                        },
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          labelText: 'Search',
-                        )
-                    ),
-                    Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxWidth: MediaQuery.of(context).size.width / 2 * 0.9,
-                              ),
-                              child: SizedBox(
-                                  width: 200,
-                                  child: CheckboxListTile(
-                                      title: Text(
-                                        "Regular",
-                                        style: TextStyle(
-                                          fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
-                                        )
-                                      ),
-                                      value: showRegular,
-                                      onChanged: (bool? value) {
-                                        value ??= false;
-                                        setState(() {
-                                          onQueryChanged(newShowRegular: value);
-                                        });
-                                      }
-                                  )
-                              )
-                          ),
-                          ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxWidth: MediaQuery.of(context).size.width / 2 * 0.9,
-                              ),
-                              child: SizedBox(
-                                  width: 200,
-                                  child: CheckboxListTile(
-                                      title: Text(
-                                          "Others",
-                                          style: TextStyle(
-                                            fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
-                                          )
-                                      ),
-                                      value: showNonRegular,
-                                      onChanged: (bool? value) {
-                                        value ??= false;
-                                        setState(() {
-                                          onQueryChanged(newShowNonRegular: value);
-                                        });
-                                      }
-                                  )
-                              )
-                          ),
-                        ]
-                    ),
-                    Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxWidth: MediaQuery.of(context).size.width / 2 * 0.9,
-                              ),
-                              child: SizedBox(
-                                  width: 200,
-                                  child: CheckboxListTile(
-                                      title: Text(
-                                          "Active",
-                                          style: TextStyle(
-                                            fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
-                                          )
-                                      ),
-                                      value: showActive,
-                                      onChanged: (bool? value) {
-                                        value ??= false;
-                                        setState(() {
-                                          onQueryChanged(newShowActive: value);
-                                        });
-                                      }
-                                  )
-                              )
-                          ),
-                          ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxWidth: MediaQuery.of(context).size.width / 2 * 0.9,
-                              ),
-                              child: SizedBox(
-                                  width: 200,
-                                  child: CheckboxListTile(
-                                      title: Text(
-                                          "Inactive",
-                                          style: TextStyle(
-                                            fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
-                                          )
-                                      ),
-                                      value: showInactive,
-                                      onChanged: (bool? value) {
-                                        value ??= false;
-                                        setState(() {
-                                          onQueryChanged(newShowInactive: value);
-                                        });
-                                      }
-                                  )
-                              )
-                          ),
-                        ]
-                    ),
-                  ]
+class _TicketRow extends StatelessWidget {
+  const _TicketRow({required this.ticket, required this.onTap});
+  final Ticket ticket;
+  final VoidCallback onTap;
+
+  String get _initials {
+    final parts = ticket.name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return '?';
+    if (parts.length == 1) return parts.first.characters.first.toUpperCase();
+    return (parts.first.characters.first + parts.last.characters.first)
+        .toUpperCase();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final inactive = !ticket.active;
+    return Material(
+      color: scheme.surface,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.7),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _initials,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
               ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: showTickets.length,
-                itemBuilder: (BuildContext context, int index) {
-                  return Container(
-                    margin: const EdgeInsets.only(top: 5, bottom: 5),
-                    child: Material(
-                      child: ListTile(
-                          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
-                          tileColor: Theme.of(context).colorScheme.secondaryContainer,
-                          title: !showTickets[index].active ? Text(
-                            "${showTickets[index].name} (inactive)",
-                            style: TextStyle(
-                              fontStyle: FontStyle.italic,
-                              fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
-                            ),
-                          ) : Text(
-                            showTickets[index].name,
-                            style: TextStyle(
-                              fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
-                            )
-                          ),
-                          subtitle: Text(
-                            showTickets[index].regular ? "Regular" : "Others",
-                            style: TextStyle(
-                              fontSize: Theme.of(context).textTheme.bodyLarge?.fontSize,
-                            )
-                          ),
-                          trailing: const Icon(Icons.arrow_forward),
-                          onTap: () {
-                            widget.onTicketPressed(showTickets[index]);
-                          }
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      ticket.name,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontStyle:
+                            inactive ? FontStyle.italic : FontStyle.normal,
+                        color: inactive
+                            ? scheme.onSurfaceVariant
+                            : scheme.onSurface,
                       ),
                     ),
-                  );
-                },
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        StatusPill(
+                          label: ticket.regular ? 'Regular' : 'Other',
+                          tone: ticket.regular
+                              ? StatusPillTone.accent
+                              : StatusPillTone.neutral,
+                        ),
+                        if (inactive) ...[
+                          const SizedBox(width: 6),
+                          const StatusPill(
+                            label: 'Inactive',
+                            tone: StatusPillTone.warning,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ]
+              Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
+            ],
+          ),
+        ),
       ),
     );
   }
