@@ -20,7 +20,7 @@ class _EventSettingsViewState extends State<EventSettingsView> {
   Future<void> _createEvent(BuildContext context) async {
     final initial = _defaultNewEventRange();
 
-    final draft = await showDialog<_EventDraft>(
+    final result = await showDialog<_EventEditorResult>(
       context: context,
       builder: (context) => _EventEditorDialog(
         title: 'Create event',
@@ -33,6 +33,8 @@ class _EventSettingsViewState extends State<EventSettingsView> {
       ),
     );
 
+    if (result == null) return;
+    final draft = result.draft;
     if (draft == null) return;
 
     final eventDoc = widget.db.collection('events').doc();
